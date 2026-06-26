@@ -50,13 +50,15 @@ function persist(): void {
 function createSchema(): void {
   db.run(`
     CREATE TABLE IF NOT EXISTS guild_subscriptions (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id     TEXT NOT NULL,
-      feed_url     TEXT NOT NULL,
-      channel_id   TEXT NOT NULL,
-      alert_type   TEXT NOT NULL CHECK(alert_type IN ('NEW_EPISODE', 'BOOSTAGRAM')),
-      alias        TEXT,
-      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id       TEXT NOT NULL,
+      feed_url       TEXT NOT NULL,
+      channel_id     TEXT NOT NULL,
+      alert_type     TEXT NOT NULL CHECK(alert_type IN ('NEW_EPISODE', 'BOOSTAGRAM')),
+      alias          TEXT,
+      min_boost_sats INTEGER NOT NULL DEFAULT 0,
+      theme          TEXT NOT NULL DEFAULT 'aegis',
+      created_at     TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(guild_id, feed_url, alert_type)
     );
 
@@ -95,22 +97,34 @@ function createSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_boosts_received     ON boostagram_cache(received_at);
   `);
 
-  // Dynamic migration: add alias column to guild_subscriptions if it doesn't exist
+  // Dynamic migration: add columns to guild_subscriptions if they don't exist
   try {
     const info = db.exec("PRAGMA table_info(guild_subscriptions);");
     let hasAlias = false;
+    let hasMinBoostSats = false;
+    let hasTheme = false;
     if (info.length > 0) {
       const nameIndex = info[0].columns.indexOf('name');
       if (nameIndex !== -1) {
         hasAlias = info[0].values.some((row) => row[nameIndex] === 'alias');
+        hasMinBoostSats = info[0].values.some((row) => row[nameIndex] === 'min_boost_sats');
+        hasTheme = info[0].values.some((row) => row[nameIndex] === 'theme');
       }
     }
     if (!hasAlias) {
       console.log("[DB] Migrating: Adding 'alias' column to 'guild_subscriptions' table...");
       db.run("ALTER TABLE guild_subscriptions ADD COLUMN alias TEXT;");
     }
+    if (!hasMinBoostSats) {
+      console.log("[DB] Migrating: Adding 'min_boost_sats' column to 'guild_subscriptions' table...");
+      db.run("ALTER TABLE guild_subscriptions ADD COLUMN min_boost_sats INTEGER NOT NULL DEFAULT 0;");
+    }
+    if (!hasTheme) {
+      console.log("[DB] Migrating: Adding 'theme' column to 'guild_subscriptions' table...");
+      db.run("ALTER TABLE guild_subscriptions ADD COLUMN theme TEXT NOT NULL DEFAULT 'aegis';");
+    }
   } catch (err) {
-    console.error("[DB] Failed to run migration check for 'alias' column:", err);
+    console.error("[DB] Failed to run migration check for setting columns:", err);
   }
 }
 
@@ -123,6 +137,8 @@ export interface GuildSubscription {
   channel_id: string;
   alert_type: 'NEW_EPISODE' | 'BOOSTAGRAM';
   alias: string | null;
+  min_boost_sats: number;
+  theme: string;
   created_at: string;
 }
 
@@ -132,11 +148,13 @@ export function addSubscription(
   channelId: string,
   alertType: 'NEW_EPISODE' | 'BOOSTAGRAM',
   alias?: string | null,
+  minBoostSats?: number,
+  theme?: string,
 ): void {
   db.run(
-    `INSERT OR REPLACE INTO guild_subscriptions (guild_id, feed_url, channel_id, alert_type, alias)
-     VALUES (?, ?, ?, ?, ?)`,
-    [guildId, feedUrl, channelId, alertType, alias ?? null],
+    `INSERT OR REPLACE INTO guild_subscriptions (guild_id, feed_url, channel_id, alert_type, alias, min_boost_sats, theme)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [guildId, feedUrl, channelId, alertType, alias ?? null, minBoostSats ?? 0, theme ?? 'aegis'],
   );
   persist();
 }
