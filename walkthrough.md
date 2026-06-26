@@ -58,7 +58,7 @@ This update introduces premium web-based host control over segment references (l
 * **Feed Format Ambiguity:** RSS parsing issues on nested XML tags. *Mitigation:* Standardized feed parser returns with type-safe fallbacks.
 
 ### Rollback Plan
-* **Code Rollback:** Revert git commit `4dffd2064831bb325c51c9e39b3842cd163255a8` to restore the code.
+* **Code Rollback:** Revert git commit `eedc8f3eff87b680905f16b4ef3790c903f1d3c3` to restore the code.
 * **Database Rollback:** The migration only appends `chapter_metadata` and `pushed_comments` tables without modifying active schemas, meaning no database revert is needed.
 
 ---
