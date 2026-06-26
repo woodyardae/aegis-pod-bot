@@ -104,10 +104,13 @@ This update introduces premium web-based host control over segment references (l
 * **For Windows hosts (Local testing/Staging environment):**
   Run inside Administrator PowerShell:
   ```powershell
-  Stop-Process -Name "node" -Force
+  # Find and terminate only the Node process running the Aegis Pod Bot
+  Get-CimInstance Win32_Process -Filter "Name = 'node.exe' AND CommandLine Like '%aegis-pod-bot%'" | Invoke-CimMethod -MethodName Terminate
   npm run start
   ```
+
 * **For Linux hosts (Remote production environment: `chantecler-01`):**
+
   Run inside terminal:
   ```bash
   sudo systemctl restart aegis-pod-bot.service
