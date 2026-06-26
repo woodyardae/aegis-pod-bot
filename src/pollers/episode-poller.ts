@@ -59,11 +59,15 @@ async function pollEpisodes(client: Client): Promise<void> {
             await channel.send({ embeds: [embed] });
           }
         } catch (channelErr: unknown) {
+          const { telemetry } = await import('../modules/telemetry');
+          telemetry.categorizeAndRecord(channelErr, `episode-poller send channel ${sub.channel_id}`);
           const msg = channelErr instanceof Error ? channelErr.message : String(channelErr);
           console.error(`[EpisodePoller] Failed to post to channel ${sub.channel_id}: ${msg}`);
         }
       }
     } catch (err: unknown) {
+      const { telemetry } = await import('../modules/telemetry');
+      telemetry.categorizeAndRecord(err, `episode-poller scan ${feedUrl}`);
       const msg = err instanceof Error ? err.message : String(err);
       const current = (failureCount.get(feedUrl) ?? 0) + 1;
       failureCount.set(feedUrl, current);

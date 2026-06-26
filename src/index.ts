@@ -119,6 +119,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     await command.execute(interaction);
   } catch (err: unknown) {
+    const { telemetry } = await import('./modules/telemetry');
+    telemetry.categorizeAndRecord(err, `command execute /${interaction.commandName}`);
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[Bot] Error executing /${interaction.commandName}: ${msg}`);
 

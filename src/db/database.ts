@@ -291,3 +291,24 @@ export function getCachedStatus(feedUrl: string): unknown | null {
   if (age > STATUS_CACHE_TTL_MS) return null;
   return JSON.parse(row[0] as string);
 }
+
+// ─── Diagnostics Helpers ───────────────────────────────────────────────────
+
+export function getTotalSubscriptionsCount(): number {
+  const result = db.exec(`SELECT COUNT(*) FROM guild_subscriptions`);
+  if (!result.length || !result[0].values.length) return 0;
+  return result[0].values[0][0] as number;
+}
+
+export function getTotalEpisodesSeenCount(): number {
+  const result = db.exec(`SELECT COUNT(*) FROM episode_seen`);
+  if (!result.length || !result[0].values.length) return 0;
+  return result[0].values[0][0] as number;
+}
+
+export function getTotalBoostsCachedCount(): number {
+  const result = db.exec(`SELECT COUNT(*) FROM boostagram_cache`);
+  if (!result.length || !result[0].values.length) return 0;
+  return result[0].values[0][0] as number;
+}
+

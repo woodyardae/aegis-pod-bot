@@ -47,6 +47,8 @@ export function startBoostPoller(client: Client): NodeJS.Timer {
             await channel.send({ embeds: [embed] });
           }
         } catch (err: unknown) {
+          const { telemetry } = await import('../modules/telemetry');
+          telemetry.categorizeAndRecord(err, `boost-poller send channel ${sub.channel_id}`);
           const msg = err instanceof Error ? err.message : String(err);
           console.error(`[BoostPoller] Failed to post to channel ${sub.channel_id}: ${msg}`);
         }

@@ -36,7 +36,7 @@ export function startPodpingConsumer(callback: PodpingCallback): void {
       console.log('[PodpingConsumer] Connected to aegis-os live stream');
     });
 
-    ws.on('message', (rawData: WebSocket.RawData) => {
+    ws.on('message', async (rawData: WebSocket.RawData) => {
       try {
         const data = JSON.parse(rawData.toString()) as AegisWsMessage;
 
@@ -63,16 +63,27 @@ export function startPodpingConsumer(callback: PodpingCallback): void {
           }
         }
       } catch (err: unknown) {
+        const { telemetry } = await import('./telemetry');
+        telemetry.categorizeAndRecord(err, 'podping-consumer message parse');
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`[PodpingConsumer] Message parse error: ${msg}`);
       }
     });
 
     ws.on('error', (err: Error) => {
+      import('./telemetry').then(({ telemetry }) => {
+        telemetry.categorizeAndRecord(err, 'podping-consumer websocket error');
+      });
       console.error(`[PodpingConsumer] WebSocket error: ${err.message}`);
     });
 
     ws.on('close', (code: number, reason: Buffer) => {
+      import('./telemetry').then(({ telemetry }) => {
+        telemetry.categorizeAndRecord(
+          new Error(`WebSocket closed (${code}): ${reason.toString() || 'no reason'}`),
+          'podping-consumer websocket close'
+        );
+      });
       console.warn(`[PodpingConsumer] Disconnected (${code}: ${reason.toString() || 'no reason'}). Reconnecting in ${RECONNECT_DELAY_MS / 1000}s...`);
       ws = null;
       if (!reconnectTimer) {

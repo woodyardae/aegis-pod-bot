@@ -139,6 +139,8 @@ async function pollAlbyForFeed(feedUrl: string, callback: BoostagramCallback): P
       }
     }
   } catch (err: unknown) {
+    const { telemetry } = await import('./telemetry');
+    telemetry.categorizeAndRecord(err, `boostagram-poller Alby poll ${feedUrl}`);
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[BoostagramPoller] Alby poll failed for ${feedUrl}: ${msg}`);
     // Do not throw — poller should continue for other feeds

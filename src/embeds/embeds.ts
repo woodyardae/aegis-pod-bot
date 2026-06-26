@@ -245,3 +245,72 @@ export function buildEarningsEmbed(opts: {
 
   return embed;
 }
+
+/**
+ * Build the Bot's Internal System Health and Telemetry Embed.
+ * Displayed in response to /status with no arguments.
+ */
+export function buildBotStatusEmbed(opts: {
+  uptimeSeconds: number;
+  totalSubscribers: number;
+  totalEpisodesSeen: number;
+  totalBoostsCached: number;
+  metrics: Array<{
+    code: string;
+    count: number;
+    lastOccurrence: string | null;
+    lastMessage: string | null;
+  }>;
+}): EmbedBuilder {
+  const uptimeMins = Math.floor(opts.uptimeSeconds / 60);
+  const uptimeHours = Math.floor(uptimeMins / 60);
+  const uptimeDays = Math.floor(uptimeHours / 24);
+
+  const uptimeStr = uptimeDays > 0
+    ? `${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`
+    : uptimeHours > 0
+      ? `${uptimeHours}h ${uptimeMins % 60}m ${opts.uptimeSeconds % 60}s`
+      : `${uptimeMins}m ${opts.uptimeSeconds % 60}s`;
+
+  const embed = new EmbedBuilder()
+    .setColor(0x3A7CA5) // Aegis Blue
+    .setTitle('🛰️ Aegis Pod Bot — System Health & Telemetry')
+    .setFooter({ text: 'aegis-os.io • System Health Diagnostics' })
+    .setTimestamp();
+
+  // Statistics Breakdown
+  embed.addFields(
+    { name: '⏱️ System Uptime',    value: `\`${uptimeStr}\``,                     inline: true },
+    { name: '👥 Subscriptions',    value: `\`${opts.totalSubscribers} active\``,  inline: true },
+    { name: '📚 Episode Watchlist', value: `\`${opts.totalEpisodesSeen} items\``,   inline: true },
+  );
+
+  embed.addFields({
+    name: '⚡ observed V4V Volume',
+    value: `\`${opts.totalBoostsCached} boostagrams in local cache\``,
+    inline: false
+  });
+
+  // Error Taxonomy / Operational Exceptions
+  const failedMetrics = opts.metrics.filter((m) => m.count > 0);
+  if (failedMetrics.length === 0) {
+    embed.addFields({
+      name: '🛡️ Operational Status',
+      value: '✅ **Zero exceptions recorded** since starting. All pollers, parsers, and channels are fully operational.',
+      inline: false
+    });
+  } else {
+    const lines = failedMetrics.map((m) => {
+      const lastTime = m.lastOccurrence ? new Date(m.lastOccurrence).toLocaleTimeString() : 'unknown';
+      return `❌ **${m.code}**: \`${m.count}\` incidents (last at ${lastTime})\n> *Last error: ${m.lastMessage?.slice(0, 80) ?? 'none'}*`;
+    });
+    embed.addFields({
+      name: '⚠️ Operational Exceptions (Telemetry)',
+      value: lines.join('\n\n'),
+      inline: false
+    });
+  }
+
+  return embed;
+}
+

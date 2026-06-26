@@ -45,7 +45,15 @@ A Discord bot that surfaces live Podcasting 2.0 activity inside your podcast com
 - A Podcast Index API key ([podcastindex.org/developer](https://podcastindex.org/developer))
 - (Optional) An Alby access token for boostagram polling ([getalby.com](https://getalby.com))
 
-### 2. Install
+### 2. Discord Bot Invite & Minimal Scopes
+To adhere to the **least-privilege model**, do NOT request Administrator privileges. In the Discord Developer Portal under **OAuth2 > URL Generator**, configure:
+* **Scopes:** `bot`, `applications.commands`
+* **Bot Permissions:**
+  * **Text Permissions:** `Send Messages`, `Embed Links`, `Read Messages/View Channels`
+  
+Use the generated URL to invite the bot to your guild.
+
+### 3. Install
 
 ```bash
 git clone https://github.com/woodyardae/aegis-pod-bot.git
