@@ -67,19 +67,9 @@ export interface FeedScanResult {
   link: string | null;
   scores: PC20Scores;
   tags: PC20Tags;
-  starTier: StarTier;
   latestEpisode: LatestEpisode | null;
   feedUrl: string;
 }
-
-export type StarTier =
-  | 'Nebula'
-  | 'Protostar'
-  | 'Main Sequence'
-  | 'Red Giant'
-  | 'Supernova'
-  | 'Pulsar'
-  | 'Black Hole';
 
 export interface LatestEpisode {
   title: string;
@@ -88,16 +78,6 @@ export interface LatestEpisode {
   enclosureUrl: string | null;
   duration: number | null;
   image: string | null;
-}
-
-function scoreToStarTier(omni: number): StarTier {
-  if (omni < 15) return 'Nebula';
-  if (omni < 30) return 'Protostar';
-  if (omni < 50) return 'Main Sequence';
-  if (omni < 70) return 'Red Giant';
-  if (omni < 85) return 'Supernova';
-  if (omni < 95) return 'Pulsar';
-  return 'Black Hole';
 }
 
 function cap100(n: number): number {
@@ -250,7 +230,6 @@ export function scoreChannel(channel: RawChannel, feedUrl: string): FeedScanResu
     link: typeof channel.link === 'string' ? channel.link : null,
     scores,
     tags,
-    starTier: scoreToStarTier(scores.omni),
     latestEpisode: extractLatestEpisode(items),
     feedUrl,
   };

@@ -1,26 +1,19 @@
 import { EmbedBuilder, Colors } from 'discord.js';
-import { type FeedScanResult, type StarTier } from '../modules/feed-scanner';
+import { type FeedScanResult } from '../modules/feed-scanner';
 
-// Star tier colors — matches the aegis-os "spaceship" aesthetic
-const TIER_COLORS: Record<StarTier, number> = {
-  'Nebula':        0x4A4A6A, // dim purple-grey
-  'Protostar':     0x6B5B95, // muted violet
-  'Main Sequence': 0x3A7CA5, // steady blue
-  'Red Giant':     0xE07B39, // warm orange
-  'Supernova':     0xF0C040, // bright gold
-  'Pulsar':        0x00D4AA, // teal-cyan
-  'Black Hole':    0xFFFFFF, // white — maximum
-};
+function getOmniColor(omni: number): number {
+  if (omni >= 80) return 0x00D4AA; // Aegis Teal (Excellent)
+  if (omni >= 50) return 0x3A7CA5; // Blue (Good)
+  if (omni >= 20) return 0x6B5B95; // Muted Violet (Basic)
+  return 0x4A4A6A; // Dim Purple-Grey (Poor)
+}
 
-const TIER_EMOJI: Record<StarTier, string> = {
-  'Nebula':        '🌌',
-  'Protostar':     '✨',
-  'Main Sequence': '⭐',
-  'Red Giant':     '🔴',
-  'Supernova':     '💥',
-  'Pulsar':        '🌀',
-  'Black Hole':    '🕳️',
-};
+function getOmniLabel(omni: number): string {
+  if (omni >= 90) return '🎯 Elite V4V Compliance';
+  if (omni >= 70) return '📈 Healthy Compliance';
+  if (omni >= 40) return '⚙️ Basic Namespace Compliance';
+  return '⚠️ Needs Optimization';
+}
 
 function tag(present: boolean): string {
   return present ? '✅' : '❌';
@@ -36,8 +29,9 @@ function scoreBar(score: number): string {
  * Displayed in response to /status [feed_url].
  */
 export function buildStatusEmbed(result: FeedScanResult): EmbedBuilder {
-  const color = TIER_COLORS[result.starTier];
-  const tierEmoji = TIER_EMOJI[result.starTier];
+  const omni = result.scores.omni;
+  const color = getOmniColor(omni);
+  const label = getOmniLabel(omni);
 
   const embed = new EmbedBuilder()
     .setColor(color)
@@ -58,10 +52,10 @@ export function buildStatusEmbed(result: FeedScanResult): EmbedBuilder {
     );
   }
 
-  // Star tier + Omni score headline
+  // Omni Score headline
   embed.addFields({
-    name: `${tierEmoji} ${result.starTier} — Omni Score`,
-    value: `\`${scoreBar(result.scores.omni)}\``,
+    name: label,
+    value: `\`${scoreBar(omni)}\``,
     inline: false,
   });
 
