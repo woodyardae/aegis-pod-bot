@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   InteractionContextType,
 } from 'discord.js';
-import { getBoostSummary, getBoostagramsSince } from '../db/database';
+import { getBoostSummary, getBoostagramsSince, getCachedStatus } from '../db/database';
 import { buildEarningsEmbed } from '../embeds/embeds';
 import { lookupByFeedUrl } from '../modules/podcast-index-client';
 
@@ -88,7 +88,12 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     const feed = await lookupByFeedUrl(feedUrl);
     if (feed?.title) showTitle = feed.title;
   } catch {
-    // Non-critical — use feedUrl as fallback
+    try {
+      const cached = getCachedStatus(feedUrl) as any;
+      if (cached?.title) showTitle = cached.title;
+    } catch {
+      // Non-critical — use feedUrl as fallback
+    }
   }
 
   const avgBoostSats = summary.count > 0 ? summary.totalSats / summary.count : 0;
