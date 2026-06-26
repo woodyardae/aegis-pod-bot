@@ -13,6 +13,7 @@ import * as statusCmd   from './commands/status';
 import * as watchCmd    from './commands/watch';
 import * as boostsCmd   from './commands/boosts';
 import * as earningsCmd from './commands/earnings';
+import * as verifyCmd   from './commands/verify';
 
 const TOKEN     = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
@@ -22,7 +23,7 @@ if (!TOKEN || !CLIENT_ID) {
   process.exit(1);
 }
 
-const commands = [statusCmd, watchCmd, boostsCmd, earningsCmd].map((cmd) =>
+const commands = [statusCmd, watchCmd, boostsCmd, earningsCmd, verifyCmd].map((cmd) =>
   cmd.data.toJSON()
 );
 
