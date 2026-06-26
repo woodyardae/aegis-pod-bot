@@ -171,6 +171,30 @@ export function removeSubscription(
   persist();
 }
 
+export function removeSubscriptionById(id: number, guildId: string): void {
+  db.run(
+    `DELETE FROM guild_subscriptions WHERE id = ? AND guild_id = ?`,
+    [id, guildId],
+  );
+  persist();
+}
+
+export function updateSubscriptionById(
+  id: number,
+  guildId: string,
+  channelId: string,
+  minBoostSats: number,
+  theme: string,
+): void {
+  db.run(
+    `UPDATE guild_subscriptions
+     SET channel_id = ?, min_boost_sats = ?, theme = ?
+     WHERE id = ? AND guild_id = ?`,
+    [channelId, minBoostSats, theme, id, guildId],
+  );
+  persist();
+}
+
 function rowsFromResult<T>(result: ReturnType<Database['exec']>): T[] {
   if (!result.length || !result[0].values.length) return [];
   const { columns, values } = result[0];

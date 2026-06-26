@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis OS | V4V Bot Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B0E14;
+      --card-bg: rgba(20, 26, 38, 0.6);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(0, 212, 170, 0.4);
+      --text: #F0F4F8;
+      --text-dim: #8E9AA8;
+      --accent: #00D4AA;
+      --accent-rgb: 0, 212, 170;
+      --danger: #FF3B30;
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --font: 'Outfit', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0, 212, 170, 0.03) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(88, 101, 242, 0.03) 0%, transparent 40%);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── Loading Screen ────────────────────────────────────────────────────── */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, 0.05);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ─── Login Screen ──────────────────────────────────────────────────────── */
+    #login-screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--glass-shadow);
+    }
+
+    .logo-container {
+      margin-bottom: 24px;
+      font-size: 3.5rem;
+    }
+
+    .login-card h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #FFF 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .login-card p {
+      color: var(--text-dim);
+      margin-bottom: 36px;
+      font-size: 1.05rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: #5865F2;
+      color: white;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 14px rgba(88, 101, 242, 0.3);
+    }
+
+    .btn:hover {
+      background: #4752C4;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(88, 101, 242, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    /* ─── Dashboard Layout ──────────────────────────────────────────────────── */
+    #dashboard-screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(11, 14, 20, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      font-size: 1.8rem;
+    }
+
+    .brand-name {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #FFF 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .user-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: #5865F2;
+      background-size: cover;
+    }
+
+    .user-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+    }
+
+    .btn-logout:hover {
+      color: white;
+      border-color: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* Main Container */
+    .dashboard-container {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: calc(100vh - 71px);
+    }
+
+    /* Sidebar Server List */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: rgba(11, 14, 20, 0.4);
+    }
+
+    .sidebar h2 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .server-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    .server-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.2s, border-color 0.2s;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+
+    .server-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .server-item.active {
+      background: rgba(0, 212, 170, 0.08);
+      border-color: rgba(0, 212, 170, 0.15);
+    }
+
+    .server-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #2B2D31;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .server-item.active .server-icon {
+      color: var(--accent);
+    }
+
+    .server-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .server-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .server-status {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+
+    .server-item.active .server-status {
+      color: var(--accent);
+    }
+
+    /* Main Workspace */
+    .workspace {
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    .welcome-panel {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+      color: var(--text-dim);
+    }
+
+    .welcome-panel h2 {
+      color: white;
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .welcome-panel p {
+      font-size: 1rem;
+      margin-bottom: 24px;
+    }
+
+    /* Guild Panel */
+    .guild-panel {
+      display: none;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .guild-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+    }
+
+    .guild-title-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .guild-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    /* Invite Needed Screen */
+    .invite-required-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 40px;
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      max-width: 600px;
+      margin: 40px auto 0 auto;
+    }
+
+    .invite-required-panel h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .invite-required-panel p {
+      color: var(--text-dim);
+      margin-bottom: 24px;
+    }
+
+    /* Active Dashboard View */
+    .active-guild-view {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 40px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--glass-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: white;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 4px;
+    }
+
+    /* Subscriptions List */
+    .subs-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sub-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    .sub-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .sub-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .sub-alias {
+      font-size: 1rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .sub-feed {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-channel {
+      font-size: 0.8rem;
+      color: var(--accent);
+      background: rgba(0, 212, 170, 0.08);
+      padding: 2px 8px;
+      border-radius: 4px;
+      align-self: flex-start;
+    }
+
+    .sub-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      border-top: 1px solid rgba(255,255,255,0.04);
+      padding-top: 10px;
+    }
+
+    .sub-meta span strong {
+      color: white;
+    }
+
+    .sub-actions {
+      display: flex;
+      gap: 8px;
+      align-self: flex-end;
+    }
+
+    .btn-action {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: color 0.2s, background-color 0.2s;
+    }
+
+    .btn-action:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-action.danger:hover {
+      color: white;
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
+    /* Subscriptions Form */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+    }
+
+    .form-control {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: white;
+      font-family: var(--font);
+      font-size: 0.9rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.15);
+    }
+
+    .form-control::placeholder {
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+      text-align: center;
+    }
+
+    .btn-primary:hover {
+      background: #00f2c3;
+      box-shadow: 0 0 15px rgba(0, 212, 170, 0.3);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+      width: 100%;
+      text-align: center;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.03);
+      color: white;
+    }
+
+    /* Live Preview Section */
+    .preview-card {
+      background: #1e2024;
+      border: 1px solid rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .preview-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: -4px;
+    }
+
+    .discord-preview {
+      background: #313338;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .discord-message {
+      display: flex;
+      gap: 16px;
+    }
+
+    .discord-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #5865F2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .discord-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .discord-username {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #F2F3F5;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bot-tag {
+      background: #5865F2;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 1px 4px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .discord-embed {
+      background: #2B2D31;
+      border-left: 4px solid var(--accent);
+      border-radius: 4px;
+      padding: 12px 16px;
+      max-width: 520px;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.2s ease;
+    }
+
+    .embed-title {
+      color: #F2F3F5;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .embed-description {
+      color: #DBDEE1;
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+    }
+
+    .embed-footer {
+      color: #949BA4;
+      font-size: 0.75rem;
+    }
+
+    /* Form Mode Switcher */
+    .alert-mode-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(0,0,0,0.2);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .alert-mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .alert-mode-btn.active {
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Loading Screen ────────────────────────────────────────────────────── -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- ─── Login Screen ──────────────────────────────────────────────────────── -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="logo-container">🛡️</div>
+      <h1>Aegis Bot</h1>
+      <p>Configure V4V boost alerts, thresholds, and themes for your podcast community.</p>
+      <a href="/api/auth/login" class="btn">
+        <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="currentColor">
+          <path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,53.22,6.83,77.19,77.19,0,0,0,49.88,0,105.15,105.15,0,0,0,19.44,8.07C3.66,31.58-1.86,54.65,1,77.53A105.73,105.73,0,0,0,32,96.36a77.7,77.7,0,0,0,6.63-10.85,68.43,68.43,0,0,1-10.5-5c.9-.65,1.76-1.34,2.58-2a75.58,75.58,0,0,0,72.9,0c.82.71,1.68,1.4,2.58,2a68.43,68.43,0,0,1-10.5,5,77.7,77.7,0,0,0,6.63,10.85,105.73,105.73,0,0,0,31-18.83C129.87,49.77,123.63,27,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.41,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z"/>
+        </svg>
+        Login with Discord
+      </a>
+    </div>
+  </div>
+
+  <!-- ─── Dashboard Screen ──────────────────────────────────────────────────── -->
+  <div id="dashboard-screen">
+    <header>
+      <div class="brand">
+        <span class="brand-logo">🛡️</span>
+        <span class="brand-name">Aegis OS Hub</span>
+      </div>
+      <div class="user-profile">
+        <div class="user-avatar" id="avatar-img"></div>
+        <span class="user-name" id="username-lbl">Creator</span>
+        <a href="/api/auth/logout" class="btn-logout">Logout</a>
+      </div>
+    </header>
+
+    <div class="dashboard-container">
+      <aside class="sidebar">
+        <h2>Your Servers</h2>
+        <div class="server-list" id="servers-container">
+          <!-- Populated dynamically -->
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <!-- Default State: No server selected -->
+        <div class="welcome-panel" id="welcome-view">
+          <h2>Select a Server</h2>
+          <p>Choose a Discord server from the left sidebar to manage its podcast subscription alerts, sat thresholds, and visual themes.</p>
+        </div>
+
+        <!-- State: Invite required -->
+        <div class="invite-required-panel" id="invite-view">
+          <h3>Aegis Bot Missing</h3>
+          <p>The bot is not yet present on this server. Add it to start configuring V4V podcast alerts.</p>
+          <a href="#" target="_blank" class="btn" id="btn-invite-bot">Invite Aegis Bot</a>
+        </div>
+
+        <!-- State: Active Guild view -->
+        <div class="guild-panel" id="guild-view">
+          <div class="guild-header">
+            <div class="guild-title-container">
+              <div class="server-icon" id="guild-icon-lbl" style="width: 44px; height: 44px; font-size: 1.2rem;"></div>
+              <h2 class="guild-title" id="guild-name-lbl">Server Dashboard</h2>
+            </div>
+          </div>
+
+          <div class="active-guild-view">
+            <!-- Subscriptions List -->
+            <div class="card">
+              <h3>Active Podcast Alerts</h3>
+              <div class="subs-grid" id="subs-container">
+                <!-- Subscriptions populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Subscription Form / Editor -->
+            <div class="card" style="position: sticky; top: 100px;">
+              <h3 id="form-title">Add Podcast Subscription</h3>
+              <form id="sub-form" style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="hidden" id="form-sub-id" value="">
+                
+                <div class="form-group">
+                  <label>Alert Mode</label>
+                  <div class="alert-mode-selector">
+                    <button type="button" class="alert-mode-btn active" id="btn-mode-episode">Episodes</button>
+                    <button type="button" class="alert-mode-btn" id="btn-mode-boost">Boosts (V4V)</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="feed-url">Podcast RSS Feed URL</label>
+                  <input type="url" id="feed-url" class="form-control" placeholder="https://feed.podcasting2.org/rss.xml" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="channel-select">Discord Alert Channel</label>
+                  <select id="channel-select" class="form-control" required>
+                    <option value="" disabled selected>Select channel...</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="show-alias">Show Name Alias (Optional)</label>
+                  <input type="text" id="show-alias" class="form-control" placeholder="e.g. Aegis Weekly">
+                </div>
+
+                <!-- Custom Alert Rules (Only visible/active for boosts) -->
+                <div id="boost-rules-container" style="display: none; flex-direction: column; gap: 16px;">
+                  <div class="form-row-2">
+                    <div class="form-group">
+                      <label for="min-boost">Min Sats Trigger</label>
+                      <input type="number" id="min-boost" class="form-control" placeholder="0" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                      <label for="theme-select">Alert Card Theme</label>
+                      <select id="theme-select" class="form-control">
+                        <!-- Theme options filled dynamically -->
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Dynamic Visual Preview -->
+                  <div class="preview-card">
+                    <div class="preview-badge">Live Card Aesthetic Preview</div>
+                    <div class="discord-preview">
+                      <div class="discord-message">
+                        <div class="discord-avatar">🛡️</div>
+                        <div class="discord-content">
+                          <div class="discord-username">Aegis Bot <span class="bot-tag">Bot</span></div>
+                          <div class="discord-embed" id="preview-embed">
+                            <div class="embed-title">⚡ <span id="preview-amount">1,250</span> sats from True Booster</div>
+                            <div class="embed-description">&gt; Value for Value is the future of media ⚡</div>
+                            <div class="embed-footer" id="preview-footer">Podcasting 2.0 • via truefans</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                  <button type="button" class="btn-secondary" id="btn-cancel" style="display: none;">Cancel</button>
+                  <button type="submit" class="btn-primary" id="btn-submit">Add Watch</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
