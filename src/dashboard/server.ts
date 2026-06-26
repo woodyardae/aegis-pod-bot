@@ -8,8 +8,15 @@ import {
   getSubscriptionsByGuild,
   addSubscription,
   removeSubscriptionById,
-  updateSubscriptionById
+  updateSubscriptionById,
+  getChapterMetadata,
+  setChapterMetadata,
+  isCommentPushed,
+  markCommentPushed
 } from '../db/database';
+import { getEpisodesList } from '../modules/feed-scanner';
+import { getNostrEventHexId, fetchNostrComments } from '../modules/nostr-client';
+import { buildNostrCommentEmbed } from '../embeds/embeds';
 
 const SQLiteStore = createSqliteStore(session);
 
@@ -337,7 +344,179 @@ export function startDashboardServer(client: Client): express.Application {
     }
   });
 
+  // Get list of episodes for a feed
+  app.get('/api/guilds/:guildId/episodes', authRequired, verifyGuildAccess, async (req, res) => {
+    const feedUrl = req.query.feedUrl as string | undefined;
+    if (!feedUrl || typeof feedUrl !== 'string') {
+      return res.status(400).json({ error: 'Missing feedUrl query parameter' });
+    }
+    try {
+      const list = await getEpisodesList(feedUrl);
+      res.json(list);
+    } catch (err: any) {
+      console.error('[Dashboard] Error fetching episodes list:', err);
+      res.status(500).json({ error: err.message || 'Failed to fetch episodes list' });
+    }
+  });
+
+  // Get chapters for an episode and merge with database custom metadata
+  app.get('/api/guilds/:guildId/episodes/:episodeGuid/chapters', authRequired, verifyGuildAccess, async (req, res) => {
+    const { episodeGuid } = req.params as { episodeGuid: string };
+    const { feedUrl, chaptersUrl } = req.query as { feedUrl?: string; chaptersUrl?: string };
+    if (!feedUrl || typeof feedUrl !== 'string') {
+      return res.status(400).json({ error: 'Missing feedUrl query parameter' });
+    }
+
+    try {
+      let chaptersList: any[] = [];
+      let version = '1.2.0';
+
+      if (chaptersUrl && typeof chaptersUrl === 'string') {
+        const response = await axios.get(chaptersUrl, { timeout: 8000 });
+        if (response.data && Array.isArray(response.data.chapters)) {
+          chaptersList = response.data.chapters;
+          if (response.data.version) {
+            version = response.data.version;
+          }
+        }
+      }
+
+      const customMeta = getChapterMetadata(feedUrl, episodeGuid);
+      const customMetaMap = new Map(customMeta.map(m => [m.chapter_index, m]));
+
+      const mergedChapters = chaptersList.map((chap, index) => {
+        const meta = customMetaMap.get(index);
+        return {
+          ...chap,
+          customLinkTitle: meta?.link_title ?? null,
+          customLinkUrl: meta?.link_url ?? null,
+          customNotes: meta?.notes ?? null,
+        };
+      });
+
+      res.json({ version, chapters: mergedChapters });
+    } catch (err: any) {
+      console.error('[Dashboard] Error fetching/merging chapters:', err.message);
+      res.status(500).json({ error: err.message || 'Failed to fetch chapters' });
+    }
+  });
+
+  // Save custom metadata for an episode's chapter
+  app.post('/api/guilds/:guildId/episodes/:episodeGuid/chapters/:chapterIndex/metadata', authRequired, verifyGuildAccess, (req, res) => {
+    const { episodeGuid, chapterIndex } = req.params as { episodeGuid: string; chapterIndex: string };
+    const { feedUrl, linkTitle, linkUrl, notes } = req.body;
+
+    if (!feedUrl || typeof feedUrl !== 'string') {
+      return res.status(400).json({ error: 'Missing feedUrl in request body' });
+    }
+
+    const idx = parseInt(chapterIndex, 10);
+    if (isNaN(idx)) {
+      return res.status(400).json({ error: 'Invalid chapterIndex' });
+    }
+
+    try {
+      setChapterMetadata(feedUrl, episodeGuid, idx, linkTitle || null, linkUrl || null, notes || null);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('[Dashboard] Error saving chapter metadata:', err);
+      res.status(500).json({ error: err.message || 'Failed to save chapter metadata' });
+    }
+  });
+
+  // Get Nostr comments for an episode
+  app.get('/api/guilds/:guildId/episodes/:episodeGuid/comments', authRequired, verifyGuildAccess, async (req, res) => {
+    const { guildId, episodeGuid } = req.params as { guildId: string; episodeGuid: string };
+    let { feedUrl, nostrUri } = req.query as { feedUrl?: string; nostrUri?: string };
+
+    try {
+      if (!nostrUri && feedUrl && typeof feedUrl === 'string') {
+        const episodes = await getEpisodesList(feedUrl);
+        const ep = episodes.find(e => e.guid === episodeGuid);
+        if (ep && ep.socialInteract) {
+          const nostrConfig = ep.socialInteract.find(
+            si => si.protocol === 'nostr' || si.uri?.includes('note1') || si.uri?.includes('nevent1')
+          );
+          if (nostrConfig) {
+            nostrUri = nostrConfig.uri;
+          }
+        }
+      }
+
+      if (!nostrUri || typeof nostrUri !== 'string') {
+        return res.json([]);
+      }
+
+      const hexId = getNostrEventHexId(nostrUri);
+      const comments = await fetchNostrComments(hexId);
+
+      const results = comments.map(c => ({
+        ...c,
+        pushed: isCommentPushed(guildId, c.id)
+      }));
+
+      res.json(results);
+    } catch (err: any) {
+      console.error('[Dashboard] Error fetching Nostr comments:', err.message);
+      res.status(500).json({ error: err.message || 'Failed to fetch comments' });
+    }
+  });
+
+  // Push a Nostr comment to Discord
+  app.post('/api/guilds/:guildId/episodes/:episodeGuid/comments/:commentId/push', authRequired, verifyGuildAccess, async (req, res) => {
+    const { guildId, episodeGuid, commentId } = req.params as { guildId: string; episodeGuid: string; commentId: string };
+    const { feedUrl, episodeTitle, showTitle, authorName, authorAvatar, content, pubkey, createdAt } = req.body;
+
+    if (!feedUrl) {
+      return res.status(400).json({ error: 'Missing feedUrl in request body' });
+    }
+    if (!authorName || !content || !pubkey) {
+      return res.status(400).json({ error: 'Missing Nostr comment fields (authorName, content, pubkey)' });
+    }
+
+    try {
+      const subs = getSubscriptionsByGuild(guildId);
+      let sub = subs.find(s => s.feed_url === feedUrl);
+      if (!sub && subs.length > 0) {
+        sub = subs[0];
+      }
+      if (!sub) {
+        return res.status(400).json({ error: 'No subscription channel configured for this server.' });
+      }
+
+      const channelId = sub.channel_id;
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) {
+        return res.status(404).json({ error: 'Bot is not in this server.' });
+      }
+      const channel = guild.channels.cache.get(channelId);
+      if (!channel || !channel.isTextBased()) {
+        return res.status(400).json({ error: 'Alert channel is not text-based or is invalid.' });
+      }
+
+      const embed = buildNostrCommentEmbed({
+        showTitle: showTitle || sub.alias || 'Podcast',
+        episodeTitle: episodeTitle || 'Unknown Episode',
+        authorName,
+        authorAvatar: authorAvatar || null,
+        content,
+        pubkey,
+        createdAt: parseInt(createdAt, 10) || Math.floor(Date.now() / 1000)
+      });
+
+      await (channel as TextChannel).send({ embeds: [embed] });
+      markCommentPushed(guildId, commentId);
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('[Dashboard] Error pushing Nostr comment to Discord:', err);
+      res.status(500).json({ error: err.message || 'Failed to push comment' });
+    }
+  });
+
+
   // Fallback for Single Page App router
+
   app.get('*all', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
   });

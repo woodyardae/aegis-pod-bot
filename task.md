@@ -1,0 +1,31 @@
+# Active Tasks: Chapters & Nostr Social Comments
+
+- `[x]` **Database Expansion & Migration**
+  - [x] Update `src/db/database.ts` schema with `chapter_metadata` and `pushed_comments` tables.
+  - [x] Implement database helper functions:
+    - [x] `getChapterMetadata` and `setChapterMetadata`
+    - [x] `isCommentPushed` and `markCommentPushed`
+- `[x]` **Extend RSS parser in `feed-scanner.ts`**
+  - [x] Add `podcast:socialInteract` to the array in `isArray` configuration of `XMLParser`.
+  - [x] Define interfaces for episodes, chapters, and social interact elements.
+  - [x] Implement and export `getEpisodesList(feedUrl: string)`.
+- `[x]` **Implement Bech32 & TLV Parser**
+  - [x] Create `src/modules/nostr-client.ts` containing the custom Bech32 and TLV decoder.
+  - [x] Write logic to translate `note1` / `nevent1` to a 32-byte hex ID.
+- `[x]` **Implement Nostr WS Client**
+  - [x] In `src/modules/nostr-client.ts`, add code to connect to multiple public Nostr relays.
+  - [x] Implement kind 1 event lookup (replies tagging the event ID).
+- `[x]` **Add Dashboard API Endpoints**
+  - [x] In `src/dashboard/server.ts`, implement `GET /api/guilds/:guildId/episodes`.
+  - [x] Implement `GET` and `POST` endpoints for chapter metadata.
+  - [x] Implement `GET` comments and `POST` comment push.
+- `[x]` **Create Dashboard UI Elements**
+  - [x] Add "Episodes & Feedback" tab header in `src/dashboard/public/index.html`.
+  - [x] Create timeline list and social comments grid templates.
+- `[x]` **Write Client Side Dashboard Script**
+  - [x] In `src/dashboard/public/app.js`, add UI page state logic to load channels, episodes, chapters, and comments.
+  - [x] Handle chapter edit attachment form submit and Nostr comments push button.
+- `[x]` **Verification & Deployment**
+  - [x] Build project locally (`npm run build`).
+  - [x] Run a test decoder script (`scripts/test_chapters_comments.js`) to verify Bech32/TLV logic.
+  - [x] Sync dist, src, scripts, package files to `chantecler-01` and restart service.

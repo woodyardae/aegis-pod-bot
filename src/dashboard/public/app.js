@@ -27,6 +27,9 @@ const THEME_PREVIEW_COLORS = {
 let currentGuildId = null;
 let currentAlertType = 'NEW_EPISODE'; // 'NEW_EPISODE' or 'BOOSTAGRAM'
 let channelsMap = [];
+let activeSubscriptions = [];
+let currentSelectedEpisode = null;
+let currentFeedUrl = null;
 
 // DOM Elements
 const loadingScreen = document.getElementById('loading-screen');
@@ -66,6 +69,37 @@ const btnInviteBot = document.getElementById('btn-invite-bot');
 const previewEmbed = document.getElementById('preview-embed');
 const previewAmount = document.getElementById('preview-amount');
 
+// New Tab & Feedback DOM Elements
+const guildTabMenu = document.getElementById('guild-tab-menu');
+const tabAlertsBtn = document.getElementById('tab-alerts-btn');
+const tabEpisodesBtn = document.getElementById('tab-episodes-btn');
+const alertsConfigView = document.getElementById('alerts-config-view');
+const episodesFeedbackView = document.getElementById('episodes-feedback-view');
+
+const episodesFeedSelect = document.getElementById('episodes-feed-select');
+const episodesListContainer = document.getElementById('episodes-list-container');
+const selectedEpisodeHeaderCard = document.getElementById('selected-episode-header-card');
+const selectedEpisodeImg = document.getElementById('selected-episode-img');
+const selectedEpisodeTitle = document.getElementById('selected-episode-title');
+const selectedEpisodeDate = document.getElementById('selected-episode-date');
+
+const chaptersCard = document.getElementById('chapters-card');
+const chaptersTimelineContainer = document.getElementById('chapters-timeline-container');
+const commentsCard = document.getElementById('comments-card');
+const commentsListContainer = document.getElementById('comments-list-container');
+
+// Modal Elements
+const chapterModal = document.getElementById('chapter-modal');
+const modalChapterInfo = document.getElementById('modal-chapter-info');
+const chapterMetadataForm = document.getElementById('chapter-metadata-form');
+const modalChapterIndex = document.getElementById('modal-chapter-index');
+const modalEpisodeGuid = document.getElementById('modal-episode-guid');
+const modalFeedUrl = document.getElementById('modal-feed-url');
+const modalLinkTitle = document.getElementById('modal-link-title');
+const modalLinkUrl = document.getElementById('modal-link-url');
+const modalNotes = document.getElementById('modal-notes');
+const btnCloseChapterModal = document.getElementById('btn-close-chapter-modal');
+
 // Initialize Theme Dropdown
 function initThemeSelect() {
   themeSelect.innerHTML = '';
@@ -88,6 +122,16 @@ minBoostInput.addEventListener('input', updateVisualPreview);
 btnCancel.addEventListener('click', resetForm);
 
 subForm.addEventListener('submit', handleFormSubmit);
+
+tabAlertsBtn.addEventListener('click', () => switchGuildTab('alerts'));
+tabEpisodesBtn.addEventListener('click', () => switchGuildTab('episodes'));
+btnCloseChapterModal.addEventListener('click', () => { chapterModal.style.display = 'none'; });
+chapterMetadataForm.addEventListener('submit', handleChapterModalSubmit);
+episodesFeedSelect.addEventListener('change', (e) => {
+  currentFeedUrl = e.target.value;
+  loadEpisodesList(currentFeedUrl);
+});
+
 
 // ─── Alert Mode Switcher ─────────────────────────────────────────────────────
 
@@ -209,6 +253,7 @@ function selectServer(guild) {
   if (!guild.botPresent) {
     welcomeView.style.display = 'none';
     guildView.style.display = 'none';
+    guildTabMenu.style.display = 'none';
     inviteView.style.display = 'flex';
     btnInviteBot.href = guild.inviteUrl;
     
@@ -220,6 +265,8 @@ function selectServer(guild) {
     welcomeView.style.display = 'none';
     inviteView.style.display = 'none';
     guildView.style.display = 'flex';
+    guildTabMenu.style.display = 'flex';
+    switchGuildTab('alerts');
     
     loadGuildChannels(guild.id);
     loadGuildSubscriptions(guild.id);
@@ -410,5 +457,357 @@ async function deleteSubscription(subId) {
   }
 }
 
+// ─── Guild Tabs & Feedback Panel Extensions ───────────────────────────────────
+
+function switchGuildTab(tab) {
+  if (tab === 'alerts') {
+    tabAlertsBtn.classList.add('active');
+    tabEpisodesBtn.classList.remove('active');
+    alertsConfigView.style.display = 'grid';
+    episodesFeedbackView.style.display = 'none';
+  } else {
+    tabAlertsBtn.classList.remove('active');
+    tabEpisodesBtn.classList.add('active');
+    alertsConfigView.style.display = 'none';
+    episodesFeedbackView.style.display = 'flex';
+    populateEpisodesFeedSelect();
+  }
+}
+
+function populateEpisodesFeedSelect() {
+  const selectedVal = episodesFeedSelect.value;
+  episodesFeedSelect.innerHTML = '<option value="" disabled selected>Select a subscribed feed...</option>';
+  
+  // Deduplicate feeds
+  const uniqueFeeds = [];
+  const feedUrls = new Set();
+  
+  activeSubscriptions.forEach(s => {
+    if (!feedUrls.has(s.feed_url)) {
+      feedUrls.add(s.feed_url);
+      uniqueFeeds.push(s);
+    }
+  });
+  
+  uniqueFeeds.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.feed_url;
+    opt.textContent = s.alias || s.feed_url;
+    episodesFeedSelect.appendChild(opt);
+  });
+  
+  if (selectedVal && feedUrls.has(selectedVal)) {
+    episodesFeedSelect.value = selectedVal;
+  } else {
+    // Reset view
+    episodesListContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">Select a feed to view episodes.</div>';
+    selectedEpisodeHeaderCard.style.display = 'none';
+    chaptersCard.style.display = 'none';
+    commentsCard.style.display = 'none';
+    currentSelectedEpisode = null;
+    currentFeedUrl = null;
+  }
+}
+
+async function loadEpisodesList(feedUrl) {
+  episodesListContainer.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 20px;"><div class="spinner" style="width: 24px; height: 24px; margin: 0 auto 10px auto;"></div>Loading episodes...</div>';
+  selectedEpisodeHeaderCard.style.display = 'none';
+  chaptersCard.style.display = 'none';
+  commentsCard.style.display = 'none';
+  currentSelectedEpisode = null;
+
+  try {
+    const res = await fetch(`/api/guilds/${currentGuildId}/episodes?feedUrl=${encodeURIComponent(feedUrl)}`);
+    const episodes = await res.json();
+
+    episodesListContainer.innerHTML = '';
+    if (!episodes || episodes.length === 0) {
+      episodesListContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No episodes found in feed.</div>';
+      return;
+    }
+
+    episodes.forEach(ep => {
+      const item = document.createElement('div');
+      item.className = 'episode-item';
+      
+      const pubDateFormatted = ep.pubDate ? new Date(ep.pubDate).toLocaleDateString() : 'Unknown Date';
+      
+      let durationStr = '--:--';
+      if (ep.duration) {
+        const h = Math.floor(ep.duration / 3600);
+        const m = Math.floor((ep.duration % 3600) / 60);
+        const s = ep.duration % 60;
+        durationStr = h > 0 
+          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` 
+          : `${m}:${String(s).padStart(2, '0')}`;
+      }
+
+      item.innerHTML = `
+        <div class="episode-title-lbl">${ep.title}</div>
+        <div class="episode-meta-lbl">
+          <span>${pubDateFormatted}</span>
+          <span>${durationStr}</span>
+        </div>
+      `;
+
+      item.addEventListener('click', () => selectEpisode(ep, item));
+      episodesListContainer.appendChild(item);
+    });
+  } catch (err) {
+    console.error('Failed to load episodes:', err);
+    episodesListContainer.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 20px;">Failed to load episodes.</div>';
+  }
+}
+
+function selectEpisode(ep, element) {
+  document.querySelectorAll('.episode-item').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+
+  currentSelectedEpisode = ep;
+
+  selectedEpisodeTitle.textContent = ep.title;
+  selectedEpisodeDate.textContent = ep.pubDate 
+    ? `Published: ${new Date(ep.pubDate).toLocaleString()}` 
+    : 'Published: Unknown';
+  
+  if (ep.image) {
+    selectedEpisodeImg.src = ep.image;
+    selectedEpisodeImg.style.display = 'block';
+  } else {
+    selectedEpisodeImg.style.display = 'none';
+  }
+  selectedEpisodeHeaderCard.style.display = 'block';
+
+  loadChapters(ep);
+  loadNostrComments(ep);
+}
+
+async function loadChapters(ep) {
+  chaptersCard.style.display = 'block';
+  chaptersTimelineContainer.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 20px;"><div class="spinner" style="width: 20px; height: 20px; margin: 0 auto 10px auto;"></div>Loading chapters...</div>';
+
+  if (!ep.chaptersUrl) {
+    chaptersTimelineContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No chapters defined in feed for this episode.</div>';
+    return;
+  }
+
+  try {
+    const url = `/api/guilds/${currentGuildId}/episodes/${encodeURIComponent(ep.guid)}/chapters?feedUrl=${encodeURIComponent(currentFeedUrl)}&chaptersUrl=${encodeURIComponent(ep.chaptersUrl)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    chaptersTimelineContainer.innerHTML = '';
+    const chapters = data.chapters || [];
+    if (chapters.length === 0) {
+      chaptersTimelineContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No chapters found.</div>';
+      return;
+    }
+
+    chapters.forEach((chap, idx) => {
+      const item = document.createElement('div');
+      item.className = 'chapter-item';
+
+      const startSecs = parseInt(chap.startTime, 10) || 0;
+      const startFormatted = formatTime(startSecs);
+
+      let detailsHtml = '';
+      if (chap.customLinkUrl || chap.customNotes) {
+        detailsHtml = `
+          <div class="chapter-attachment-box">
+            ${chap.customLinkUrl ? `
+              <div>
+                <a href="${chap.customLinkUrl}" target="_blank" class="chapter-link">
+                  🔗 ${chap.customLinkTitle || 'Reference Link'}
+                </a>
+              </div>
+            ` : ''}
+            ${chap.customNotes ? `
+              <div class="chapter-notes-lbl">${chap.customNotes}</div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      item.innerHTML = `
+        <div class="chapter-header">
+          <div class="chapter-title-lbl">${idx + 1}. ${chap.title || `Chapter ${idx + 1}`}</div>
+          <span class="chapter-duration">${startFormatted}</span>
+        </div>
+        ${detailsHtml}
+        <button type="button" class="chapter-btn-edit">Edit Attachment</button>
+      `;
+
+      item.querySelector('.chapter-btn-edit').addEventListener('click', () => openChapterModal(chap, idx));
+      chaptersTimelineContainer.appendChild(item);
+    });
+  } catch (err) {
+    console.error('Failed to load chapters:', err);
+    chaptersTimelineContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">Failed to load chapters.</div>';
+  }
+}
+
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return h > 0 
+    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` 
+    : `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function openChapterModal(chap, idx) {
+  modalFeedUrl.value = currentFeedUrl;
+  modalEpisodeGuid.value = currentSelectedEpisode.guid;
+  modalChapterIndex.value = idx;
+
+  const startFormatted = formatTime(parseInt(chap.startTime, 10) || 0);
+  modalChapterInfo.textContent = `Chapter #${idx + 1}: ${chap.title || 'Untitled'} (${startFormatted})`;
+
+  modalLinkTitle.value = chap.customLinkTitle || '';
+  modalLinkUrl.value = chap.customLinkUrl || '';
+  modalNotes.value = chap.customNotes || '';
+
+  chapterModal.style.display = 'flex';
+}
+
+async function handleChapterModalSubmit(e) {
+  e.preventDefault();
+  
+  const feedUrl = modalFeedUrl.value;
+  const guid = modalEpisodeGuid.value;
+  const index = modalChapterIndex.value;
+
+  const body = {
+    feedUrl,
+    linkTitle: modalLinkTitle.value || null,
+    linkUrl: modalLinkUrl.value || null,
+    notes: modalNotes.value || null
+  };
+
+  try {
+    const url = `/api/guilds/${currentGuildId}/episodes/${encodeURIComponent(guid)}/chapters/${index}/metadata`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const result = await res.json();
+    
+    if (result.error) {
+      alert(`Error saving metadata: ${result.error}`);
+    } else {
+      chapterModal.style.display = 'none';
+      loadChapters(currentSelectedEpisode);
+    }
+  } catch (err) {
+    console.error('Failed to save chapter metadata:', err);
+    alert('Failed to save chapter metadata.');
+  }
+}
+
+async function loadNostrComments(ep) {
+  commentsCard.style.display = 'block';
+  commentsListContainer.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 20px;"><div class="spinner" style="width: 20px; height: 20px; margin: 0 auto 10px auto;"></div>Loading Nostr comments...</div>';
+
+  const nostrConfig = ep.socialInteract ? ep.socialInteract.find(
+    si => si.protocol === 'nostr' || si.uri?.includes('note1') || si.uri?.includes('nevent1')
+  ) : null;
+
+  if (!nostrConfig) {
+    commentsListContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No Nostr feed configuration (podcast:socialInteract) found for this episode.</div>';
+    return;
+  }
+
+  try {
+    const url = `/api/guilds/${currentGuildId}/episodes/${encodeURIComponent(ep.guid)}/comments?feedUrl=${encodeURIComponent(currentFeedUrl)}&nostrUri=${encodeURIComponent(nostrConfig.uri)}`;
+    const res = await fetch(url);
+    const comments = await res.json();
+
+    commentsListContainer.innerHTML = '';
+    if (!comments || comments.length === 0) {
+      commentsListContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No comments found on Nostr for this event.</div>';
+      return;
+    }
+
+    comments.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'comment-item';
+
+      const timeFormatted = new Date(c.createdAt * 1000).toLocaleString();
+      const avatarUrl = c.authorAvatar || '';
+
+      item.innerHTML = `
+        <div class="comment-header">
+          <div class="comment-author-avatar" style="${avatarUrl ? `background-image: url(${avatarUrl})` : ''}">
+            ${avatarUrl ? '' : '💬'}
+          </div>
+          <div class="comment-author-info">
+            <div class="comment-author-name">${c.authorName}</div>
+            <div class="comment-time">${timeFormatted}</div>
+          </div>
+        </div>
+        <div class="comment-body">${c.content}</div>
+        <div class="comment-footer-actions">
+          <button type="button" class="comment-btn-push" ${c.pushed ? 'disabled' : ''}>
+            ${c.pushed ? 'Pushed to Discord' : 'Push to Discord'}
+          </button>
+        </div>
+      `;
+
+      if (!c.pushed) {
+        item.querySelector('.comment-btn-push').addEventListener('click', (e) => pushCommentToDiscord(c, ep, e.target));
+      }
+
+      commentsListContainer.appendChild(item);
+    });
+  } catch (err) {
+    console.error('Failed to load Nostr comments:', err);
+    commentsListContainer.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">Failed to fetch comments from Nostr relays.</div>';
+  }
+}
+
+async function pushCommentToDiscord(c, ep, button) {
+  const sub = activeSubscriptions.find(s => s.feed_url === currentFeedUrl) || {};
+  const showTitle = sub.alias || 'Podcast';
+
+  const body = {
+    feedUrl: currentFeedUrl,
+    episodeTitle: ep.title,
+    showTitle,
+    authorName: c.authorName,
+    authorAvatar: c.authorAvatar,
+    content: c.content,
+    pubkey: c.pubkey,
+    createdAt: c.createdAt
+  };
+
+  button.disabled = true;
+  button.textContent = 'Pushing...';
+
+  try {
+    const url = `/api/guilds/${currentGuildId}/episodes/${encodeURIComponent(ep.guid)}/comments/${c.id}/push`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      button.textContent = 'Pushed to Discord';
+    } else {
+      button.disabled = false;
+      button.textContent = 'Push to Discord';
+      alert(`Failed to push comment: ${result.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    console.error('Push comment failed:', err);
+    button.disabled = false;
+    button.textContent = 'Push to Discord';
+    alert('Failed to push comment to Discord.');
+  }
+}
+
 // Run boot check
+
 window.addEventListener('load', checkAuth);

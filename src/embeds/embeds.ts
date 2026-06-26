@@ -343,3 +343,39 @@ export function buildBotStatusEmbed(opts: {
   return embed;
 }
 
+/**
+ * Build a Nostr comment push card embed.
+ */
+export function buildNostrCommentEmbed(opts: {
+  showTitle: string;
+  episodeTitle: string;
+  authorName: string;
+  authorAvatar: string | null;
+  content: string;
+  pubkey: string;
+  createdAt: number;
+}): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setColor(0x7F3E98) // Nostr purple style
+    .setTitle(`💬 Nostr Comment from ${opts.authorName}`)
+    .setDescription(
+      opts.content.length > 800
+        ? `> ${opts.content.slice(0, 797)}...`
+        : `> ${opts.content}`
+    )
+    .setFooter({ text: `via Nostr • ${opts.showTitle}` })
+    .setTimestamp(new Date(opts.createdAt * 1000));
+
+  if (opts.authorAvatar) {
+    embed.setThumbnail(opts.authorAvatar);
+  }
+
+  embed.addFields({
+    name: '🎙️ Episode',
+    value: opts.episodeTitle,
+    inline: false,
+  });
+
+  return embed;
+}
+

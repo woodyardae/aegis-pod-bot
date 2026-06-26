@@ -744,7 +744,242 @@
       color: white;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
+    /* Guild Tab Navigation Styles */
+    .tab-menu {
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: white;
+    }
+
+    .tab-btn.active {
+      background: rgba(0, 212, 170, 0.1);
+      color: var(--accent);
+    }
+
+    /* Episode and Feedback Layout Styles */
+    .episode-item {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .episode-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .episode-item.active {
+      background: rgba(0, 212, 170, 0.06);
+      border-color: var(--accent);
+      box-shadow: 0 0 10px rgba(0, 212, 170, 0.1);
+    }
+
+    .episode-title-lbl {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: white;
+      line-height: 1.4;
+    }
+
+    .episode-meta-lbl {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Chapter List Card Timeline */
+    .chapter-item {
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    .chapter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .chapter-title-lbl {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .chapter-duration {
+      font-size: 0.75rem;
+      color: var(--accent);
+      background: rgba(0, 212, 170, 0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .chapter-attachment-box {
+      border-top: 1px dashed rgba(255, 255, 255, 0.06);
+      padding-top: 8px;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chapter-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .chapter-link:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-notes-lbl {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    .chapter-btn-edit {
+      align-self: flex-end;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .chapter-btn-edit:hover {
+      background: rgba(255,255,255,0.08);
+      color: white;
+    }
+
+    /* Nostr Comment Items */
+    .comment-item {
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .comment-header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .comment-author-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+    }
+
+    .comment-author-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .comment-author-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .comment-time {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+
+    .comment-body {
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.4;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .comment-footer-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      padding-top: 8px;
+    }
+
+    .comment-btn-push {
+      background: #5865F2;
+      color: white;
+      border: none;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.2s;
+    }
+
+    .comment-btn-push:hover {
+      background: #4752C4;
+    }
+
+    .comment-btn-push:disabled {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-dim);
+      cursor: not-allowed;
+      border: 1px solid var(--border);
+    }
   </style>
+
 </head>
 <body>
 
@@ -811,9 +1046,13 @@
               <div class="server-icon" id="guild-icon-lbl" style="width: 44px; height: 44px; font-size: 1.2rem;"></div>
               <h2 class="guild-title" id="guild-name-lbl">Server Dashboard</h2>
             </div>
+            <div class="tab-menu" id="guild-tab-menu" style="display: none;">
+              <button type="button" class="tab-btn active" id="tab-alerts-btn">Alerts Config</button>
+              <button type="button" class="tab-btn" id="tab-episodes-btn">Episodes & Feedback</button>
+            </div>
           </div>
 
-          <div class="active-guild-view">
+          <div class="active-guild-view" id="alerts-config-view">
             <!-- Subscriptions List -->
             <div class="card">
               <h3>Active Podcast Alerts</h3>
@@ -895,7 +1134,98 @@
             </div>
           </div>
 
+          <!-- State: Episodes & Feedback View -->
+          <div class="guild-panel" id="episodes-feedback-view" style="display: none; flex-direction: column; gap: 24px; border: none; padding: 0; background: transparent; width: 100%;">
+            <div class="card">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;">
+                <h3>Episodes & Community Feedback</h3>
+                <div style="display: flex; align-items: center; gap: 12px; min-width: 300px;">
+                  <label for="episodes-feed-select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Active Feed:</label>
+                  <select id="episodes-feed-select" class="form-control">
+                    <option value="" disabled selected>Select a subscribed feed...</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 350px 1fr; gap: 24px; min-height: 500px; align-items: start;">
+              <!-- Episode List Card -->
+              <div class="card" style="max-height: 700px; overflow-y: auto;">
+                <h3>Episodes List</h3>
+                <div id="episodes-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+                  <div style="color: var(--text-dim); text-align: center; padding: 20px;">Select a feed to view episodes.</div>
+                </div>
+              </div>
+
+              <!-- Episode Details Panel (Chapters & Nostr) -->
+              <div style="display: flex; flex-direction: column; gap: 24px;">
+                <div class="card" id="selected-episode-header-card" style="display: none;">
+                  <div style="display: flex; align-items: center; gap: 16px;">
+                    <img id="selected-episode-img" src="" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; display: none;">
+                    <div>
+                      <h4 id="selected-episode-title" style="font-size: 1.2rem; font-weight: 700; color: white;">Episode Title</h4>
+                      <p id="selected-episode-date" style="font-size: 0.85rem; color: var(--text-dim);">Published on: --</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+                  <!-- Chapters Timeline -->
+                  <div class="card" id="chapters-card" style="display: none; max-height: 580px; overflow-y: auto;">
+                    <h3>Chapters Timeline</h3>
+                    <div id="chapters-timeline-container" style="display: flex; flex-direction: column; gap: 12px;">
+                      <!-- Populated dynamically -->
+                    </div>
+                  </div>
+
+                  <!-- Nostr Comments -->
+                  <div class="card" id="comments-card" style="display: none; max-height: 580px; overflow-y: auto;">
+                    <h3>Nostr Live Feedback</h3>
+                    <div id="comments-list-container" style="display: flex; flex-direction: column; gap: 12px;">
+                      <!-- Populated dynamically -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
+
+  <!-- ─── Chapter Metadata Edit Modal ──────────────────────────────────────── -->
+  <div id="chapter-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 500px; width: 100%; border: 1px solid var(--border-focus); background: rgba(15, 20, 30, 0.95); display: flex; flex-direction: column; gap: 16px;">
+      <h3 style="margin-bottom: 0;">Edit Chapter Attachment</h3>
+      <p id="modal-chapter-info" style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0;">Chapter #0 - 00:00:00</p>
+      
+      <form id="chapter-metadata-form" style="display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" id="modal-chapter-index">
+        <input type="hidden" id="modal-episode-guid">
+        <input type="hidden" id="modal-feed-url">
+        
+        <div class="form-group">
+          <label for="modal-link-title">Resource Link Title</label>
+          <input type="text" id="modal-link-title" class="form-control" placeholder="e.g. Read the article">
+        </div>
+        
+        <div class="form-group">
+          <label for="modal-link-url">Resource URL</label>
+          <input type="url" id="modal-link-url" class="form-control" placeholder="https://example.com/notes">
+        </div>
+        
+        <div class="form-group">
+          <label for="modal-notes">Chapter Notes / References</label>
+          <textarea id="modal-notes" class="form-control" rows="4" placeholder="Enter key topics discussed, resources, or show notes..."></textarea>
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 8px; justify-content: flex-end;">
+          <button type="button" class="btn-secondary" id="btn-close-chapter-modal" style="width: auto; padding: 8px 20px;">Cancel</button>
+          <button type="submit" class="btn-primary" style="width: auto; padding: 8px 24px;">Save Attachment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
       </main>
     </div>
   </div>

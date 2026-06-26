@@ -91,10 +91,30 @@ function createSchema(): void {
       cached_at   TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS chapter_metadata (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      feed_url      TEXT NOT NULL,
+      episode_guid  TEXT NOT NULL,
+      chapter_index INTEGER NOT NULL,
+      link_title    TEXT,
+      link_url      TEXT,
+      notes         TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(feed_url, episode_guid, chapter_index)
+    );
+
+    CREATE TABLE IF NOT EXISTS pushed_comments (
+      guild_id      TEXT NOT NULL,
+      event_id      TEXT NOT NULL,
+      pushed_at     TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (guild_id, event_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_subscriptions_guild ON guild_subscriptions(guild_id);
     CREATE INDEX IF NOT EXISTS idx_subscriptions_feed  ON guild_subscriptions(feed_url);
     CREATE INDEX IF NOT EXISTS idx_boosts_feed         ON boostagram_cache(feed_url);
     CREATE INDEX IF NOT EXISTS idx_boosts_received     ON boostagram_cache(received_at);
+    CREATE INDEX IF NOT EXISTS idx_chapters_feed_guid  ON chapter_metadata(feed_url, episode_guid);
   `);
 
   // Dynamic migration: add columns to guild_subscriptions if they don't exist
@@ -374,4 +394,64 @@ export function getTotalBoostsCachedCount(): number {
   if (!result.length || !result[0].values.length) return 0;
   return result[0].values[0][0] as number;
 }
+
+// ─── Dashboard Helper Extensions ───────────────────────────────────────────
+
+export interface ChapterMetadataRecord {
+  id: number;
+  feed_url: string;
+  episode_guid: string;
+  chapter_index: number;
+  link_title: string | null;
+  link_url: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export function getChapterMetadata(feedUrl: string, episodeGuid: string): ChapterMetadataRecord[] {
+  const result = db.exec(
+    `SELECT * FROM chapter_metadata WHERE feed_url = ? AND episode_guid = ?`,
+    [feedUrl, episodeGuid],
+  );
+  return rowsFromResult<ChapterMetadataRecord>(result);
+}
+
+export function setChapterMetadata(
+  feedUrl: string,
+  episodeGuid: string,
+  chapterIndex: number,
+  linkTitle: string | null,
+  linkUrl: string | null,
+  notes: string | null,
+): void {
+  db.run(
+    `INSERT OR REPLACE INTO chapter_metadata (feed_url, episode_guid, chapter_index, link_title, link_url, notes)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [feedUrl, episodeGuid, chapterIndex, linkTitle, linkUrl, notes],
+  );
+  persist();
+}
+
+export function isCommentPushed(guildId: string, eventId: string): boolean {
+  const result = db.exec(
+    `SELECT 1 FROM pushed_comments WHERE guild_id = ? AND event_id = ?`,
+    [guildId, eventId],
+  );
+  return result.length > 0 && result[0].values.length > 0;
+}
+
+export function markCommentPushed(guildId: string, eventId: string): void {
+  db.run(
+    `INSERT OR IGNORE INTO pushed_comments (guild_id, event_id) VALUES (?, ?)`,
+    [guildId, eventId],
+  );
+  persist();
+}
+
+export function closeDb(): void {
+  if (db) {
+    db.close();
+  }
+}
+
 
