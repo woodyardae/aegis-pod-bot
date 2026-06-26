@@ -28,7 +28,7 @@ A Discord bot that surfaces live Podcasting 2.0 activity inside your podcast com
 
 | Command | Description |
 |---|---|
-| `/status [feed_url]` | PC2.0 compliance status card for any podcast feed |
+| `/status [feed_url]` | PC2.0 compliance status card for any podcast feed (leave empty for system diagnostics) |
 | `/watch add [feed_url] [#channel]` | Subscribe to new episode announcements |
 | `/watch remove [feed_url]` | Unsubscribe |
 | `/watch list` | List all episode watches |
@@ -36,6 +36,9 @@ A Discord bot that surfaces live Podcasting 2.0 activity inside your podcast com
 | `/boosts remove [feed_url]` | Unsubscribe |
 | `/boosts list` | List all boostagram watches |
 | `/earnings [feed_url] [period]` | V4V earnings summary (day/week/month) |
+| `/verify` | Run permission audits, connection connectivity, and check feed status |
+| `/setup` | Launch the step-by-step interactive onboarding setup wizard |
+| `/setup-channels` | Auto-generate a secure read-only `Aegis Podcasting` category and channels |
 
 ## Quick Start
 

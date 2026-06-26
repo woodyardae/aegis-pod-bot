@@ -12,6 +12,9 @@ For a clean community layout, we recommend creating a dedicated category called 
 2.  ⚡ `#boostagrams` — Target channel for live zaps/boosts and listener comments.
 3.  📊 `#v4v-stats` — Channel to check periodic summaries (or you can run this command in a private admin-only channel).
 
+> [!TIP]
+> **Automated Channel Generation:** You can save time by running `/setup-channels`. The bot will automatically generate the `Aegis Podcasting` category and the channels, applying the correct read-only permissions for your members.
+
 ---
 
 ## 2. Invite the Bot (Least Privilege)
@@ -34,20 +37,27 @@ To protect your server's security, Aegis Pod Bot operates on a **least-privilege
 
 ## 3. Configure Channel Subscriptions
 
-Once the bot is in your server, use slash commands to wire channels to your podcast feed:
+Once the bot is in your server, you can configure the channel subscriptions either via the interactive wizard (recommended) or using individual slash commands:
 
-### A. Subscribe to Episode Alerts
-Route new episode alerts to `#new-episodes`:
+### A. Recommended: Use the Onboarding Wizard
+To configure your feed and channels in a single step, simply run:
+```
+/setup
+```
+The bot will launch a popup modal requesting your podcast's RSS feed URL, followed by select menus to choose your announcement and boostagram channels.
+
+### B. Alternative: Configure Commands Manually
+If you prefer to configure feeds manually, use these individual slash commands:
+
+#### 1. Subscribe to Episode Alerts
 ```
 /watch add feed_url: https://yourpodcast.com/rss.xml channel: #new-episodes
 ```
 
-### B. Subscribe to Live Boostagrams
-Route zaps and zappers' comments to `#boostagrams`:
+#### 2. Subscribe to Live Boostagrams
 ```
 /boosts add feed_url: https://yourpodcast.com/rss.xml channel: #boostagrams
 ```
-
 *(Note: Live boostagrams require setting up the `ALBY_ACCESS_TOKEN` in the bot's environment).*
 
 ---

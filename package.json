@@ -1,6 +1,6 @@
 {
   "name": "aegis-pod-bot",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Aegis OS Podcasting 2.0 / V4V Discord Bot — Episode Announcer, Boostagram Live Feed, V4V Earnings, PC2.0 Status Card",
   "main": "dist/index.js",
   "scripts": {
