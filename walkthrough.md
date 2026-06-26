@@ -17,6 +17,7 @@ This update introduces premium web-based host control over segment references (l
   - `setChapterMetadata(feedUrl, episodeGuid, chapterIndex, linkTitle, linkUrl, notes)`
   - `isCommentPushed(guildId, eventId)`
   - `markCommentPushed(guildId, eventId)`
+  - `closeDb()` (releases SQLite locks cleanly for testing scripts)
 
 ### 2. Nostr Client & Bech32/TLV Parser
 * Created [nostr-client.ts](file:///C:/dev/repos/aegis-pod-bot/src/modules/nostr-client.ts) as a self-contained, zero-dependency Nostr utility:
@@ -41,6 +42,76 @@ This update introduces premium web-based host control over segment references (l
 
 ### 5. Discord Embed Aesthetics
 * Exported `buildNostrCommentEmbed` in [embeds.ts](file:///C:/dev/repos/aegis-pod-bot/src/embeds/embeds.ts) to structure pushes as purple-styled card embeds showing author avatar, username, content, and parent episode title without referencing any "tipping" language.
+
+---
+
+## Release-Grade PR Summary
+
+### User-Visible Changes
+* **Episodes & Feedback Panel:** A new sidebar list and split-view dashboard.
+* **Segment Editor Modal:** Form to customize reference links and show notes per chapter index.
+* **Nostr Community Comments:** Real-time feedback thread list on the dashboard.
+* **Discord Moderator Push:** Allows pushing comments directly into server alert channels.
+
+### Risk Areas & Mitigations
+* **Websocket Exhaustion:** High connection overhead querying Nostr relays. *Mitigation:* Implemented a strict 4-second timeout limit.
+* **Feed Format Ambiguity:** RSS parsing issues on nested XML tags. *Mitigation:* Standardized feed parser returns with type-safe fallbacks.
+
+### Rollback Plan
+* **Code Rollback:** Revert git commit `4dffd2064831bb325c51c9e39b3842cd163255a8` to restore the code.
+* **Database Rollback:** The migration only appends `chapter_metadata` and `pushed_comments` tables without modifying active schemas, meaning no database revert is needed.
+
+---
+
+## Creator Rollout Checklist
+
+### Phase 0: Dogfooding (24 - 48 Hours)
+- [ ] Deploy branch to local sandbox (`chantecler-01`).
+- [ ] Connect bot to internal creator testing guild.
+- [ ] Configure chapter attachments on internal test feed items.
+- [ ] Trigger Nostr comment fetch and verify timeline slides update instantly.
+- [ ] Click "Push to Discord" and verify purple card embed formats correctly in channels.
+
+### Phase 1: Pilot Server Rollout (48 - 72 Hours)
+- [ ] Onboard 3 partner creator servers.
+- [ ] Provide dashboard instructions for configuring `<podcast:socialInteract>` in feed generators.
+- [ ] Monitor Express logs on pilot hosts to verify session validations.
+- [ ] Collect UX feedback on chapter metadata editor and comments list rendering.
+
+### Phase 2: Broader Rollout (Post 72 Hours)
+- [ ] Merge branch into main.
+- [ ] Release tag version `v1.1.0`.
+- [ ] Automatically update dashboard tab features for all connected guilds.
+
+---
+
+## Post-Deploy Monitoring Checks
+* **Dashboard Auth:** Watch for callback exceptions (`[Dashboard] OAuth2 Callback Error`).
+* **Chapter Overrides:** Monitor `POST /metadata` response codes for write failure logs.
+* **Nostr WebSockets:** Track connection errors to public relays (`wss://nos.lol`, etc.).
+* **Discord Webhook Limits:** Audit `TextChannel.send` client failures and HTTP 429 rate limit logs.
+
+---
+
+## 72-Hour Operator Runbook
+
+### Alert Thresholds
+* **Express Latency:** Latency > 500ms on `/comments` queries.
+* **API Error Rate:** HTTP 5xx responses from dashboard endpoints > 5% within 10 minutes.
+* **Websocket Connections:** Active connections count warning.
+
+### Triage Actions: Restarting the Service
+* **For Windows hosts (Local testing/Staging environment):**
+  Run inside Administrator PowerShell:
+  ```powershell
+  Stop-Process -Name "node" -Force
+  npm run start
+  ```
+* **For Linux hosts (Remote production environment: `chantecler-01`):**
+  Run inside terminal:
+  ```bash
+  sudo systemctl restart aegis-pod-bot.service
+  ```
 
 ---
 
