@@ -1,5 +1,5 @@
 import { type Client, type TextChannel } from 'discord.js';
-import { getAllWatchedFeeds, getSubscribersByFeed } from '../db/database';
+import { getAllWatchedFeeds, getSubscribersByFeed, getCachedStatus } from '../db/database';
 import { startBoostagramPoller, type NormalizedBoostagram } from '../modules/boostagram-poller';
 import { buildBoostEmbed } from '../embeds/embeds';
 import { lookupByFeedUrl } from '../modules/podcast-index-client';
@@ -11,12 +11,26 @@ async function getShowTitle(feedUrl: string): Promise<string> {
   if (showTitleCache.has(feedUrl)) return showTitleCache.get(feedUrl)!;
   try {
     const feed = await lookupByFeedUrl(feedUrl);
-    const title = feed?.title ?? feedUrl;
-    showTitleCache.set(feedUrl, title);
-    return title;
-  } catch {
-    return feedUrl;
+    if (feed?.title) {
+      showTitleCache.set(feedUrl, feed.title);
+      return feed.title;
+    }
+  } catch (err) {
+    console.warn(`[BoostPoller] Podcast Index lookup failed for ${feedUrl}, trying database cache...`);
   }
+
+  // Fallback to SQLite cache
+  try {
+    const cached = getCachedStatus(feedUrl) as any;
+    if (cached?.title) {
+      showTitleCache.set(feedUrl, cached.title);
+      return cached.title;
+    }
+  } catch (err) {
+    // Ignore cache read errors
+  }
+
+  return feedUrl;
 }
 
 /**

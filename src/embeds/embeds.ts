@@ -1,6 +1,14 @@
 import { EmbedBuilder, Colors } from 'discord.js';
 import { type FeedScanResult } from '../modules/feed-scanner';
 
+function formatDiscordTimestamp(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const parsed = Date.parse(dateStr);
+  if (isNaN(parsed)) return dateStr;
+  const unixSecs = Math.floor(parsed / 1000);
+  return `<t:${unixSecs}:F> (<t:${unixSecs}:R>)`;
+}
+
 function getOmniColor(omni: number): number {
   if (omni >= 80) return 0x00D4AA; // Aegis Teal (Excellent)
   if (omni >= 50) return 0x3A7CA5; // Blue (Good)
@@ -96,9 +104,10 @@ export function buildStatusEmbed(result: FeedScanResult): EmbedBuilder {
       inline: true,
     });
     if (ep.pubDate) {
+      const ts = formatDiscordTimestamp(ep.pubDate);
       embed.addFields({
         name: '📅 Published',
-        value: ep.pubDate,
+        value: ts ?? ep.pubDate,
         inline: true,
       });
     }
@@ -138,13 +147,21 @@ export function buildEpisodeEmbed(opts: {
   }
 
   if (opts.duration && opts.duration > 0) {
-    const mins = Math.floor(opts.duration / 60);
+    let durationValue = '';
+    const hours = Math.floor(opts.duration / 3600);
+    const mins = Math.floor((opts.duration % 3600) / 60);
     const secs = opts.duration % 60;
-    embed.addFields({ name: '⏱️ Duration', value: `${mins}m ${secs}s`, inline: true });
+    if (hours > 0) {
+      durationValue = `${hours}h ${mins}m ${secs}s`;
+    } else {
+      durationValue = `${mins}m ${secs}s`;
+    }
+    embed.addFields({ name: '⏱️ Duration', value: durationValue, inline: true });
   }
 
   if (opts.pubDate) {
-    embed.addFields({ name: '📅 Published', value: opts.pubDate, inline: true });
+    const ts = formatDiscordTimestamp(opts.pubDate);
+    embed.addFields({ name: '📅 Published', value: ts ?? opts.pubDate, inline: true });
   }
 
   // V4V badge if enabled
@@ -168,12 +185,12 @@ export function buildBoostEmbed(opts: {
   episodeTitle: string | null;
   receivedAt: Date;
 }): EmbedBuilder {
-  // Color scales with amount — small=purple, medium=gold, large=teal
+  // Color scales with amount — small=blurple, medium=purple, high=teal, whale=gold
   let color: number;
-  if (opts.amountSats >= 100_000) color = Colors.Gold;
-  else if (opts.amountSats >= 10_000) color = 0x00D4AA;
-  else if (opts.amountSats >= 1_000)  color = 0x6B5B95;
-  else                                 color = 0x3A7CA5;
+  if (opts.amountSats >= 100_000) color = 0xF1C40F; // Whale Tier: Vibrant Gold
+  else if (opts.amountSats >= 10_000) color = 0x00E6B4; // High Tier: Aegis Teal
+  else if (opts.amountSats >= 1_000)  color = 0x9B59B6; // Medium Tier: Royal Purple
+  else                                 color = 0x5865F2; // Small Tier: Discord Blurple
 
   const sender = opts.senderAlias ?? 'Anonymous Booster';
   const satsFormatted = opts.amountSats.toLocaleString();
