@@ -18,12 +18,13 @@ if (!DISCORD_TOKEN) {
 }
 
 // ── Command registry ────────────────────────────────────────────────────────
-import * as statusCmd   from './commands/status';
-import * as watchCmd    from './commands/watch';
-import * as boostsCmd   from './commands/boosts';
-import * as earningsCmd from './commands/earnings';
-import * as verifyCmd   from './commands/verify';
-import * as setupCmd    from './commands/setup';
+import * as statusCmd        from './commands/status';
+import * as watchCmd         from './commands/watch';
+import * as boostsCmd        from './commands/boosts';
+import * as earningsCmd      from './commands/earnings';
+import * as verifyCmd        from './commands/verify';
+import * as setupCmd         from './commands/setup';
+import * as setupChannelsCmd from './commands/setup-channels';
 
 interface BotCommand {
   data: SlashCommandBuilder;
@@ -31,7 +32,7 @@ interface BotCommand {
 }
 
 const commands = new Collection<string, BotCommand>();
-for (const cmd of [statusCmd, watchCmd, boostsCmd, earningsCmd, verifyCmd, setupCmd]) {
+for (const cmd of [statusCmd, watchCmd, boostsCmd, earningsCmd, verifyCmd, setupCmd, setupChannelsCmd]) {
   commands.set(cmd.data.name, cmd as BotCommand);
 }
 
