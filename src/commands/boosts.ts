@@ -25,6 +25,9 @@ export const data = new SlashCommandBuilder()
           .addChannelTypes(ChannelType.GuildText)
           .setRequired(true)
       )
+      .addStringOption((opt) =>
+        opt.setName('alias').setDescription('Optional nickname/alias for this podcast show').setRequired(false)
+      )
   )
   .addSubcommand((sub) =>
     sub
@@ -49,6 +52,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   if (sub === 'add') {
     const feedUrl = interaction.options.getString('feed_url', true).trim();
     const channel = interaction.options.getChannel('channel', true) as TextChannel;
+    const alias = interaction.options.getString('alias')?.trim() ?? null;
 
     try {
       const parsed = new URL(feedUrl);
@@ -70,12 +74,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     }
 
-    addSubscription(interaction.guildId, feedUrl, channel.id, 'BOOSTAGRAM');
+    addSubscription(interaction.guildId, feedUrl, channel.id, 'BOOSTAGRAM', alias);
+    const displayShowName = alias ? `**${alias}**` : `**${feedUrl}**`;
     await interaction.reply({
-      content: `✅ Now watching **${feedUrl}** for live boostagrams.\nAlerts will be posted in ${channel}.\n\n⚡ Boostagrams are polled every 60 seconds via Alby. Make sure your \`ALBY_ACCESS_TOKEN\` is configured.`,
+      content: `✅ Now watching ${displayShowName} for live boostagrams.\nAlerts will be posted in ${channel}.\n\n⚡ Boostagrams are polled every 60 seconds via Alby. Make sure your \`ALBY_ACCESS_TOKEN\` is configured.`,
     });
 
-    console.log(`[Boosts] Guild ${interaction.guildId} subscribed to BOOSTAGRAM for ${feedUrl} -> #${channel.name}`);
+    console.log(`[Boosts] Guild ${interaction.guildId} subscribed to BOOSTAGRAM for ${feedUrl} (alias: ${alias}) -> #${channel.name}`);
     return;
   }
 
@@ -94,7 +99,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     }
 
-    const lines = subs.map((s) => `• <#${s.channel_id}> → \`${s.feed_url}\``).join('\n');
+    const lines = subs.map((s) => {
+      const showName = s.alias ? `**${s.alias}** (\`${s.feed_url}\`)` : `\`${s.feed_url}\``;
+      return `• <#${s.channel_id}> → ${showName}`;
+    }).join('\n');
     await interaction.reply({ content: `**Boostagram watches for this server:**\n${lines}`, ephemeral: true });
   }
 }

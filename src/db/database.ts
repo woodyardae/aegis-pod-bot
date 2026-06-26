@@ -55,6 +55,7 @@ function createSchema(): void {
       feed_url     TEXT NOT NULL,
       channel_id   TEXT NOT NULL,
       alert_type   TEXT NOT NULL CHECK(alert_type IN ('NEW_EPISODE', 'BOOSTAGRAM')),
+      alias        TEXT,
       created_at   TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(guild_id, feed_url, alert_type)
     );
@@ -93,6 +94,24 @@ function createSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_boosts_feed         ON boostagram_cache(feed_url);
     CREATE INDEX IF NOT EXISTS idx_boosts_received     ON boostagram_cache(received_at);
   `);
+
+  // Dynamic migration: add alias column to guild_subscriptions if it doesn't exist
+  try {
+    const info = db.exec("PRAGMA table_info(guild_subscriptions);");
+    let hasAlias = false;
+    if (info.length > 0) {
+      const nameIndex = info[0].columns.indexOf('name');
+      if (nameIndex !== -1) {
+        hasAlias = info[0].values.some((row) => row[nameIndex] === 'alias');
+      }
+    }
+    if (!hasAlias) {
+      console.log("[DB] Migrating: Adding 'alias' column to 'guild_subscriptions' table...");
+      db.run("ALTER TABLE guild_subscriptions ADD COLUMN alias TEXT;");
+    }
+  } catch (err) {
+    console.error("[DB] Failed to run migration check for 'alias' column:", err);
+  }
 }
 
 // ─── Guild Subscriptions ────────────────────────────────────────────────────
@@ -103,6 +122,7 @@ export interface GuildSubscription {
   feed_url: string;
   channel_id: string;
   alert_type: 'NEW_EPISODE' | 'BOOSTAGRAM';
+  alias: string | null;
   created_at: string;
 }
 
@@ -111,11 +131,12 @@ export function addSubscription(
   feedUrl: string,
   channelId: string,
   alertType: 'NEW_EPISODE' | 'BOOSTAGRAM',
+  alias?: string | null,
 ): void {
   db.run(
-    `INSERT OR REPLACE INTO guild_subscriptions (guild_id, feed_url, channel_id, alert_type)
-     VALUES (?, ?, ?, ?)`,
-    [guildId, feedUrl, channelId, alertType],
+    `INSERT OR REPLACE INTO guild_subscriptions (guild_id, feed_url, channel_id, alert_type, alias)
+     VALUES (?, ?, ?, ?, ?)`,
+    [guildId, feedUrl, channelId, alertType, alias ?? null],
   );
   persist();
 }
