@@ -1049,6 +1049,7 @@
             <div class="tab-menu" id="guild-tab-menu" style="display: none;">
               <button type="button" class="tab-btn active" id="tab-alerts-btn">Alerts Config</button>
               <button type="button" class="tab-btn" id="tab-episodes-btn">Episodes & Feedback</button>
+              <button type="button" class="tab-btn" id="tab-agora-btn">Live listening (Agora)</button>
             </div>
           </div>
 
@@ -1184,6 +1185,70 @@
                     <div id="comments-list-container" style="display: flex; flex-direction: column; gap: 12px;">
                       <!-- Populated dynamically -->
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- State: Agora Live Listening View -->
+          <div class="guild-panel" id="agora-room-view" style="display: none; flex-direction: column; gap: 24px; border: none; padding: 0; background: transparent; width: 100%;">
+            <div class="card">
+              <h3>📻 Agora Live listening Room</h3>
+              <p style="color: var(--text-dim); margin-top: -8px;">Sync playback states in real-time with other community members and zap the host directly.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 400px; gap: 24px; min-height: 500px; align-items: start;">
+              <!-- Left side: Player and Track Info -->
+              <div style="display: flex; flex-direction: column; gap: 24px;">
+                <div class="card" id="agora-now-playing-card">
+                  <h4 style="font-size: 1.1rem; color: white;">Now Playing</h4>
+                  <div style="display: flex; align-items: center; gap: 20px; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+                    <div style="font-size: 2.5rem; background: var(--accent); color: var(--bg); width: 70px; height: 70px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);">📻</div>
+                    <div style="flex: 1;">
+                      <h5 id="agora-track-title" style="font-size: 1.25rem; font-weight: 700; color: white; margin-bottom: 4px;">No active broadcast</h5>
+                      <p id="agora-track-feed" style="font-size: 0.85rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; word-break: break-all;">--</p>
+                      
+                      <!-- Playback Seekbar representation -->
+                      <div style="display: flex; align-items: center; gap: 12px; margin-top: 16px;">
+                        <span id="agora-current-time" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--accent);">00:00</span>
+                        <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; position: relative; overflow: hidden;">
+                          <div id="agora-progress-bar" style="width: 0%; height: 100%; background: var(--accent); border-radius: 3px; box-shadow: 0 0 8px var(--accent);"></div>
+                        </div>
+                        <span id="agora-status-badge" style="font-size: 0.75rem; font-weight: bold; background: rgba(0,212,170,0.1); color: var(--accent); padding: 2px 8px; border-radius: 4px;">--</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Next Up Timeline -->
+                <div class="card">
+                  <h3>Horai Scheduler: Next Up</h3>
+                  <div id="agora-upcoming-list" style="display: flex; flex-direction: column; gap: 12px;">
+                    <!-- Populated dynamically -->
+                    <div style="color: var(--text-dim); font-style: italic;">No upcoming tracks scheduled.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right side: Audience Presence & Host Info -->
+              <div style="display: flex; flex-direction: column; gap: 24px;">
+                <div class="card">
+                  <h3>👑 Room Host</h3>
+                  <div id="agora-host-info" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(0, 212, 170, 0.05); border: 1px solid rgba(0, 212, 170, 0.15); border-radius: 12px;">
+                    <div style="font-size: 1.5rem;">👑</div>
+                    <div>
+                      <h5 id="agora-host-name" style="font-size: 1rem; font-weight: 700; color: white;">No Host</h5>
+                      <p style="font-size: 0.8rem; color: var(--text-dim);">Source of Playback Truth</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h3>👥 Active Listeners</h3>
+                  <div id="agora-listeners-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Populated dynamically -->
+                    <div style="color: var(--text-dim); font-style: italic;">Room is empty.</div>
                   </div>
                 </div>
               </div>

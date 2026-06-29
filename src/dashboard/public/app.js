@@ -73,8 +73,19 @@ const previewAmount = document.getElementById('preview-amount');
 const guildTabMenu = document.getElementById('guild-tab-menu');
 const tabAlertsBtn = document.getElementById('tab-alerts-btn');
 const tabEpisodesBtn = document.getElementById('tab-episodes-btn');
+const tabAgoraBtn = document.getElementById('tab-agora-btn');
 const alertsConfigView = document.getElementById('alerts-config-view');
 const episodesFeedbackView = document.getElementById('episodes-feedback-view');
+const agoraRoomView = document.getElementById('agora-room-view');
+
+const agoraTrackTitle = document.getElementById('agora-track-title');
+const agoraTrackFeed = document.getElementById('agora-track-feed');
+const agoraCurrentTime = document.getElementById('agora-current-time');
+const agoraProgressBar = document.getElementById('agora-progress-bar');
+const agoraStatusBadge = document.getElementById('agora-status-badge');
+const agoraUpcomingList = document.getElementById('agora-upcoming-list');
+const agoraHostName = document.getElementById('agora-host-name');
+const agoraListenersList = document.getElementById('agora-listeners-list');
 
 const episodesFeedSelect = document.getElementById('episodes-feed-select');
 const episodesListContainer = document.getElementById('episodes-list-container');
@@ -125,6 +136,7 @@ subForm.addEventListener('submit', handleFormSubmit);
 
 tabAlertsBtn.addEventListener('click', () => switchGuildTab('alerts'));
 tabEpisodesBtn.addEventListener('click', () => switchGuildTab('episodes'));
+tabAgoraBtn.addEventListener('click', () => switchGuildTab('agora'));
 btnCloseChapterModal.addEventListener('click', () => { chapterModal.style.display = 'none'; });
 chapterMetadataForm.addEventListener('submit', handleChapterModalSubmit);
 episodesFeedSelect.addEventListener('change', (e) => {
@@ -463,15 +475,159 @@ function switchGuildTab(tab) {
   if (tab === 'alerts') {
     tabAlertsBtn.classList.add('active');
     tabEpisodesBtn.classList.remove('active');
+    tabAgoraBtn.classList.remove('active');
     alertsConfigView.style.display = 'grid';
     episodesFeedbackView.style.display = 'none';
-  } else {
+    agoraRoomView.style.display = 'none';
+    stopAgoraPolling();
+  } else if (tab === 'episodes') {
     tabAlertsBtn.classList.remove('active');
     tabEpisodesBtn.classList.add('active');
+    tabAgoraBtn.classList.remove('active');
     alertsConfigView.style.display = 'none';
     episodesFeedbackView.style.display = 'flex';
+    agoraRoomView.style.display = 'none';
     populateEpisodesFeedSelect();
+    stopAgoraPolling();
+  } else if (tab === 'agora') {
+    tabAlertsBtn.classList.remove('active');
+    tabEpisodesBtn.classList.remove('active');
+    tabAgoraBtn.classList.add('active');
+    alertsConfigView.style.display = 'none';
+    episodesFeedbackView.style.display = 'none';
+    agoraRoomView.style.display = 'flex';
+    startAgoraPolling();
   }
+}
+
+let agoraInterval = null;
+
+function startAgoraPolling() {
+  stopAgoraPolling();
+  updateAgoraView();
+  agoraInterval = setInterval(updateAgoraView, 2000);
+}
+
+function stopAgoraPolling() {
+  if (agoraInterval) {
+    clearInterval(agoraInterval);
+    agoraInterval = null;
+  }
+}
+
+async function updateAgoraView() {
+  if (!currentGuildId) return;
+
+  try {
+    const res = await fetch(`/api/public/rooms/${currentGuildId}`);
+    if (res.status === 404) {
+      renderMockAgoraState();
+      return;
+    }
+    const data = await res.json();
+    renderAgoraState(data);
+  } catch (err) {
+    console.warn('[Agora] Failed to fetch live room state, falling back to mock:', err);
+    renderMockAgoraState();
+  }
+}
+
+function renderAgoraState(data) {
+  agoraTrackTitle.textContent = data.episodeTitle || 'No Active Episode';
+  agoraTrackFeed.textContent = data.feedUrl || '--';
+  agoraStatusBadge.textContent = data.isPlaying ? '🟢 LIVE' : '⏸️ PAUSED';
+  agoraStatusBadge.style.background = data.isPlaying ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.05)';
+  agoraStatusBadge.style.color = data.isPlaying ? 'var(--accent)' : 'var(--text-dim)';
+
+  // Calculate elapsed progress
+  const durationMs = 3600000; // Default 1 hour if unspecified
+  const progressPercent = Math.min(100, (data.extrapolatedPositionMs / durationMs) * 100);
+  agoraProgressBar.style.width = `${progressPercent}%`;
+  
+  const formatTime = (ms) => {
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  agoraCurrentTime.textContent = formatTime(data.extrapolatedPositionMs);
+
+  // Host Info
+  if (data.hostUserId) {
+    agoraHostName.textContent = `Host User (ID: ${data.hostUserId})`;
+  } else {
+    agoraHostName.textContent = 'No active host';
+  }
+
+  // Listeners List
+  agoraListenersList.innerHTML = '';
+  if (data.listeners && data.listeners.length > 0) {
+    data.listeners.forEach(l => {
+      const item = document.createElement('div');
+      item.style.display = 'flex';
+      item.style.alignItems = 'center';
+      item.style.justifyContent = 'space-between';
+      item.style.background = 'rgba(255,255,255,0.01)';
+      item.style.padding = '8px 12px';
+      item.style.borderRadius = '8px';
+      item.style.border = '1px solid var(--border)';
+      
+      const walletPart = l.walletAddress ? `<span style="font-size: 0.8rem; color: var(--accent);">⚡ ${l.walletAddress}</span>` : '';
+      item.innerHTML = `
+        <span style="font-size: 0.9rem; font-weight: 500;">👤 ${l.username}</span>
+        ${walletPart}
+      `;
+      agoraListenersList.appendChild(item);
+    });
+  } else {
+    agoraListenersList.innerHTML = '<div style="color: var(--text-dim); font-style: italic;">No active listeners.</div>';
+  }
+
+  // Upcoming Schedule List
+  agoraUpcomingList.innerHTML = '';
+  if (data.upcoming && data.upcoming.length > 0) {
+    data.upcoming.forEach(item => {
+      const el = document.createElement('div');
+      el.style.display = 'flex';
+      el.style.justifyContent = 'space-between';
+      el.style.background = 'rgba(255,255,255,0.01)';
+      el.style.padding = '10px 14px';
+      el.style.borderRadius = '8px';
+      el.style.border = '1px solid var(--border)';
+      
+      const startStr = new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      el.innerHTML = `
+        <div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: white;">${item.title}</div>
+          <div style="font-size: 0.75rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">${item.episodeGuid}</div>
+        </div>
+        <span style="font-size: 0.8rem; color: var(--accent); font-weight: 500;">${startStr}</span>
+      `;
+      agoraUpcomingList.appendChild(el);
+    });
+  } else {
+    agoraUpcomingList.innerHTML = '<div style="color: var(--text-dim); font-style: italic;">No upcoming tracks scheduled.</div>';
+  }
+}
+
+function renderMockAgoraState() {
+  const mockData = {
+    episodeTitle: 'Mock Podcast Episode: Aegis Aether Liveplugs',
+    feedUrl: 'https://example.com/mock-feed.xml',
+    isPlaying: true,
+    extrapolatedPositionMs: 1450000,
+    hostUserId: 'discord-admin-999',
+    listeners: [
+      { username: 'TrueBooster', walletAddress: 'truebooster@getalby.com' },
+      { username: 'AegisFan', walletAddress: 'aegisfan@alby.com' },
+      { username: 'LNSplitter', walletAddress: 'splitter@lens.xyz' }
+    ],
+    upcoming: [
+      { title: 'Next Up: Value Flow Mechanics deep dive', startTime: Date.now() + 1800000, episodeGuid: 'guid-next-1' },
+      { title: 'Future: Boostagram Leaderboard Reaper live', startTime: Date.now() + 3600000, episodeGuid: 'guid-next-2' }
+    ]
+  };
+  renderAgoraState(mockData);
 }
 
 function populateEpisodesFeedSelect() {

@@ -515,6 +515,38 @@ export function startDashboardServer(client: Client): express.Application {
   });
 
 
+  // Get public Agora room details (now playing, presence, next-up)
+  app.get('/api/public/rooms/:roomId', async (req, res) => {
+    const { roomId } = req.params;
+    try {
+      const { agoraRoomManager } = await import('../modules/agora-room');
+      const { horaiScheduler } = await import('../modules/horai-scheduler');
+
+      const room = agoraRoomManager.getRoom(roomId);
+      if (!room) {
+        return res.status(404).json({ error: 'Agora room is not active.' });
+      }
+
+      const extrapolatedPositionMs = agoraRoomManager.getExtrapolatedPlaybackPosition(roomId);
+      const upcoming = horaiScheduler.getUpcomingSchedule(roomId, Date.now(), 3);
+
+      res.json({
+        roomId: room.roomId,
+        feedUrl: room.feedUrl,
+        episodeGuid: room.episodeGuid,
+        episodeTitle: room.episodeTitle,
+        isPlaying: room.isPlaying,
+        startedAt: room.startedAt,
+        hostUserId: room.hostUserId,
+        listeners: room.listeners,
+        extrapolatedPositionMs,
+        upcoming,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to fetch public room state' });
+    }
+  });
+
   // Fallback for Single Page App router
 
   app.get('*all', (req, res) => {
