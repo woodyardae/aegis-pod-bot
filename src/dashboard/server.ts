@@ -547,6 +547,20 @@ export function startDashboardServer(client: Client): express.Application {
     }
   });
 
+  // System Health observability endpoint (Asphaleia)
+  app.get('/health', (req, res) => {
+    try {
+      const { telemetry } = require('../modules/telemetry');
+      const report = telemetry.getHealthReport();
+      
+      // Return 200 for healthy, 503 for degraded or down
+      const statusCode = report.status === 'HEALTHY' ? 200 : 503;
+      res.status(statusCode).json(report);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to generate health report' });
+    }
+  });
+
   // Fallback for Single Page App router
 
   app.get('*all', (req, res) => {
