@@ -88,6 +88,11 @@ class AgoraRoomManager {
     };
     this.rooms.set(roomId, room);
     console.log(`[Agora] Initialized listening room "${roomId}" for episode "${episodeTitle}"`);
+    
+    // Initialize Rhema floor state for this room
+    const { rhemaFloorManager } = require('./rhema-floor');
+    rhemaFloorManager.getOrCreateFloorState(roomId);
+    
     return room;
   }
 
@@ -139,6 +144,14 @@ class AgoraRoomManager {
     if (room.hostUserId === userId) {
       room.hostUserId = room.listeners.length > 0 ? room.listeners[0].userId : null;
       console.log(`[Agora] Host left room "${roomId}". New host: "${room.hostUserId || 'none'}"`);
+    }
+
+    // Clean up Choros messages and Rhema floor if the room is empty
+    if (room.listeners.length === 0) {
+      const { chorosChatManager } = require('./choros-chat');
+      const { rhemaFloorManager } = require('./rhema-floor');
+      chorosChatManager.clearRoomMessages(roomId);
+      rhemaFloorManager.clearFloor(roomId);
     }
 
     this.emitEvent(roomId, { type: 'LEAVE', userId }, room);
