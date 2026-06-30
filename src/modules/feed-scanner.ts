@@ -4,7 +4,7 @@ import { XMLParser } from 'fast-xml-parser';
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-  isArray: (name) => ['podcast:valueRecipient', 'podcast:person', 'item'].includes(name),
+  isArray: (name) => ['podcast:valueRecipient', 'podcast:person', 'item', 'podcast:socialInteract'].includes(name),
 });
 
 const FEED_FETCH_TIMEOUT_MS = 15_000;
@@ -277,5 +277,86 @@ interface RawItem {
   'podcast:valueTimeSplit'?: unknown;
   'podcast:transcript'?: unknown;
   'podcast:integrity'?: unknown;
+  'podcast:chapters'?: unknown;
+  'podcast:socialInteract'?: unknown;
   [key: string]: unknown;
+}
+
+// ─── Dashboard Show Episodes Fetcher ──────────────────────────────────────
+
+export interface SocialInteractConfig {
+  uri: string;
+  protocol: string;
+  accountId?: string;
+}
+
+export interface EpisodeDetail {
+  title: string;
+  guid: string;
+  pubDate: string | null;
+  enclosureUrl: string | null;
+  duration: number | null;
+  image: string | null;
+  chaptersUrl: string | null;
+  socialInteract: SocialInteractConfig[];
+}
+
+export async function getEpisodesList(feedUrl: string): Promise<EpisodeDetail[]> {
+  const channel = await fetchFeedChannel(feedUrl);
+  const items: RawItem[] = Array.isArray(channel.item)
+    ? channel.item
+    : channel.item != null ? [channel.item as RawItem] : [];
+
+  return items.filter(Boolean).map((item) => {
+    const enclosure = item.enclosure;
+    const enclosureUrl = typeof enclosure === 'object' && enclosure !== null
+      ? (enclosure as Record<string, unknown>)['@_url'] as string ?? null
+      : null;
+
+    const guid = typeof item.guid === 'string'
+      ? item.guid
+      : (typeof item.guid === 'object' && item.guid !== null
+          ? ((item.guid as Record<string, unknown>)['#text'] as string ?? String(Date.now()))
+          : String(item.guid ?? Date.now()));
+
+    let chaptersUrl: string | null = null;
+    if (typeof item['podcast:chapters'] === 'object' && item['podcast:chapters'] !== null) {
+      chaptersUrl = (item['podcast:chapters'] as Record<string, unknown>)['@_url'] as string ?? null;
+    }
+
+    const socialInteract: SocialInteractConfig[] = [];
+    if (item['podcast:socialInteract']) {
+      const tags = Array.isArray(item['podcast:socialInteract'])
+        ? item['podcast:socialInteract']
+        : [item['podcast:socialInteract']];
+
+      for (const t of tags) {
+        if (typeof t === 'object' && t !== null) {
+          const typedTag = t as Record<string, unknown>;
+          const uri = typedTag['@_uri'] as string;
+          const protocol = typedTag['@_protocol'] as string;
+          if (uri && protocol) {
+            socialInteract.push({
+              uri,
+              protocol,
+              accountId: typedTag['@_accountId'] as string ?? undefined,
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      title: typeof item.title === 'string' ? item.title : String(item.title ?? 'Untitled'),
+      guid,
+      pubDate: typeof item.pubDate === 'string' ? item.pubDate : null,
+      enclosureUrl,
+      duration: item['itunes:duration'] != null ? parseInt(String(item['itunes:duration']), 10) || null : null,
+      image: typeof item['podcast:image'] === 'object' && item['podcast:image'] !== null
+        ? (item['podcast:image'] as Record<string, unknown>)['@_href'] as string ?? null
+        : null,
+      chaptersUrl,
+      socialInteract,
+    };
+  });
 }

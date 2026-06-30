@@ -37,6 +37,18 @@ async function pollEpisodes(client: Client): Promise<void> {
 
       console.log(`[EpisodePoller] New episode detected: "${ep.title}" from ${result.title}`);
 
+      // Wire to Agora Listening Room (Polis Family)
+      const { agoraRoomManager } = await import('../modules/agora-room');
+      const subscribers = getSubscribersByFeed(feedUrl, 'NEW_EPISODE');
+      for (const sub of subscribers) {
+        agoraRoomManager.initializeEpisodeRoom(
+          sub.guild_id,
+          feedUrl,
+          ep.guid,
+          ep.title
+        );
+      }
+
       const embed = buildEpisodeEmbed({
         showTitle: result.title,
         showImage: result.image,
@@ -51,7 +63,6 @@ async function pollEpisodes(client: Client): Promise<void> {
         tags: { value: result.tags.value, transcript: result.tags.transcript },
       });
 
-      const subscribers = getSubscribersByFeed(feedUrl, 'NEW_EPISODE');
       for (const sub of subscribers) {
         try {
           const channel = await client.channels.fetch(sub.channel_id) as TextChannel | null;

@@ -50,12 +50,15 @@ function persist(): void {
 function createSchema(): void {
   db.run(`
     CREATE TABLE IF NOT EXISTS guild_subscriptions (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id     TEXT NOT NULL,
-      feed_url     TEXT NOT NULL,
-      channel_id   TEXT NOT NULL,
-      alert_type   TEXT NOT NULL CHECK(alert_type IN ('NEW_EPISODE', 'BOOSTAGRAM')),
-      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id       TEXT NOT NULL,
+      feed_url       TEXT NOT NULL,
+      channel_id     TEXT NOT NULL,
+      alert_type     TEXT NOT NULL CHECK(alert_type IN ('NEW_EPISODE', 'BOOSTAGRAM')),
+      alias          TEXT,
+      min_boost_sats INTEGER NOT NULL DEFAULT 0,
+      theme          TEXT NOT NULL DEFAULT 'aegis',
+      created_at     TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(guild_id, feed_url, alert_type)
     );
 
@@ -88,11 +91,61 @@ function createSchema(): void {
       cached_at   TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS chapter_metadata (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      feed_url      TEXT NOT NULL,
+      episode_guid  TEXT NOT NULL,
+      chapter_index INTEGER NOT NULL,
+      link_title    TEXT,
+      link_url      TEXT,
+      notes         TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(feed_url, episode_guid, chapter_index)
+    );
+
+    CREATE TABLE IF NOT EXISTS pushed_comments (
+      guild_id      TEXT NOT NULL,
+      event_id      TEXT NOT NULL,
+      pushed_at     TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (guild_id, event_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_subscriptions_guild ON guild_subscriptions(guild_id);
     CREATE INDEX IF NOT EXISTS idx_subscriptions_feed  ON guild_subscriptions(feed_url);
     CREATE INDEX IF NOT EXISTS idx_boosts_feed         ON boostagram_cache(feed_url);
     CREATE INDEX IF NOT EXISTS idx_boosts_received     ON boostagram_cache(received_at);
+    CREATE INDEX IF NOT EXISTS idx_chapters_feed_guid  ON chapter_metadata(feed_url, episode_guid);
   `);
+
+  // Dynamic migration: add columns to guild_subscriptions if they don't exist
+  try {
+    const info = db.exec("PRAGMA table_info(guild_subscriptions);");
+    let hasAlias = false;
+    let hasMinBoostSats = false;
+    let hasTheme = false;
+    if (info.length > 0) {
+      const nameIndex = info[0].columns.indexOf('name');
+      if (nameIndex !== -1) {
+        hasAlias = info[0].values.some((row) => row[nameIndex] === 'alias');
+        hasMinBoostSats = info[0].values.some((row) => row[nameIndex] === 'min_boost_sats');
+        hasTheme = info[0].values.some((row) => row[nameIndex] === 'theme');
+      }
+    }
+    if (!hasAlias) {
+      console.log("[DB] Migrating: Adding 'alias' column to 'guild_subscriptions' table...");
+      db.run("ALTER TABLE guild_subscriptions ADD COLUMN alias TEXT;");
+    }
+    if (!hasMinBoostSats) {
+      console.log("[DB] Migrating: Adding 'min_boost_sats' column to 'guild_subscriptions' table...");
+      db.run("ALTER TABLE guild_subscriptions ADD COLUMN min_boost_sats INTEGER NOT NULL DEFAULT 0;");
+    }
+    if (!hasTheme) {
+      console.log("[DB] Migrating: Adding 'theme' column to 'guild_subscriptions' table...");
+      db.run("ALTER TABLE guild_subscriptions ADD COLUMN theme TEXT NOT NULL DEFAULT 'aegis';");
+    }
+  } catch (err) {
+    console.error("[DB] Failed to run migration check for setting columns:", err);
+  }
 }
 
 // ─── Guild Subscriptions ────────────────────────────────────────────────────
@@ -103,6 +156,9 @@ export interface GuildSubscription {
   feed_url: string;
   channel_id: string;
   alert_type: 'NEW_EPISODE' | 'BOOSTAGRAM';
+  alias: string | null;
+  min_boost_sats: number;
+  theme: string;
   created_at: string;
 }
 
@@ -111,11 +167,14 @@ export function addSubscription(
   feedUrl: string,
   channelId: string,
   alertType: 'NEW_EPISODE' | 'BOOSTAGRAM',
+  alias?: string | null,
+  minBoostSats?: number,
+  theme?: string,
 ): void {
   db.run(
-    `INSERT OR REPLACE INTO guild_subscriptions (guild_id, feed_url, channel_id, alert_type)
-     VALUES (?, ?, ?, ?)`,
-    [guildId, feedUrl, channelId, alertType],
+    `INSERT OR REPLACE INTO guild_subscriptions (guild_id, feed_url, channel_id, alert_type, alias, min_boost_sats, theme)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [guildId, feedUrl, channelId, alertType, alias ?? null, minBoostSats ?? 0, theme ?? 'aegis'],
   );
   persist();
 }
@@ -128,6 +187,30 @@ export function removeSubscription(
   db.run(
     `DELETE FROM guild_subscriptions WHERE guild_id = ? AND feed_url = ? AND alert_type = ?`,
     [guildId, feedUrl, alertType],
+  );
+  persist();
+}
+
+export function removeSubscriptionById(id: number, guildId: string): void {
+  db.run(
+    `DELETE FROM guild_subscriptions WHERE id = ? AND guild_id = ?`,
+    [id, guildId],
+  );
+  persist();
+}
+
+export function updateSubscriptionById(
+  id: number,
+  guildId: string,
+  channelId: string,
+  minBoostSats: number,
+  theme: string,
+): void {
+  db.run(
+    `UPDATE guild_subscriptions
+     SET channel_id = ?, min_boost_sats = ?, theme = ?
+     WHERE id = ? AND guild_id = ?`,
+    [channelId, minBoostSats, theme, id, guildId],
   );
   persist();
 }
@@ -311,4 +394,64 @@ export function getTotalBoostsCachedCount(): number {
   if (!result.length || !result[0].values.length) return 0;
   return result[0].values[0][0] as number;
 }
+
+// ─── Dashboard Helper Extensions ───────────────────────────────────────────
+
+export interface ChapterMetadataRecord {
+  id: number;
+  feed_url: string;
+  episode_guid: string;
+  chapter_index: number;
+  link_title: string | null;
+  link_url: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export function getChapterMetadata(feedUrl: string, episodeGuid: string): ChapterMetadataRecord[] {
+  const result = db.exec(
+    `SELECT * FROM chapter_metadata WHERE feed_url = ? AND episode_guid = ?`,
+    [feedUrl, episodeGuid],
+  );
+  return rowsFromResult<ChapterMetadataRecord>(result);
+}
+
+export function setChapterMetadata(
+  feedUrl: string,
+  episodeGuid: string,
+  chapterIndex: number,
+  linkTitle: string | null,
+  linkUrl: string | null,
+  notes: string | null,
+): void {
+  db.run(
+    `INSERT OR REPLACE INTO chapter_metadata (feed_url, episode_guid, chapter_index, link_title, link_url, notes)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [feedUrl, episodeGuid, chapterIndex, linkTitle, linkUrl, notes],
+  );
+  persist();
+}
+
+export function isCommentPushed(guildId: string, eventId: string): boolean {
+  const result = db.exec(
+    `SELECT 1 FROM pushed_comments WHERE guild_id = ? AND event_id = ?`,
+    [guildId, eventId],
+  );
+  return result.length > 0 && result[0].values.length > 0;
+}
+
+export function markCommentPushed(guildId: string, eventId: string): void {
+  db.run(
+    `INSERT OR IGNORE INTO pushed_comments (guild_id, event_id) VALUES (?, ?)`,
+    [guildId, eventId],
+  );
+  persist();
+}
+
+export function closeDb(): void {
+  if (db) {
+    db.close();
+  }
+}
+
 

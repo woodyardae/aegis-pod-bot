@@ -1,5 +1,6 @@
 import { EmbedBuilder, Colors } from 'discord.js';
 import { type FeedScanResult } from '../modules/feed-scanner';
+import { THEMES } from './themes';
 
 function formatDiscordTimestamp(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -184,13 +185,24 @@ export function buildBoostEmbed(opts: {
   appName: string | null;
   episodeTitle: string | null;
   receivedAt: Date;
+  theme?: string;
 }): EmbedBuilder {
-  // Color scales with amount — small=blurple, medium=purple, high=teal, whale=gold
+  // Color scales with amount depending on selected theme
   let color: number;
-  if (opts.amountSats >= 100_000) color = 0xF1C40F; // Whale Tier: Vibrant Gold
-  else if (opts.amountSats >= 10_000) color = 0x00E6B4; // High Tier: Aegis Teal
-  else if (opts.amountSats >= 1_000)  color = 0x9B59B6; // Medium Tier: Royal Purple
-  else                                 color = 0x5865F2; // Small Tier: Discord Blurple
+  const activeTheme = opts.theme && THEMES[opts.theme] ? THEMES[opts.theme] : null;
+
+  if (activeTheme) {
+    if (opts.amountSats >= 100_000)      color = activeTheme.whale;
+    else if (opts.amountSats >= 10_000)  color = activeTheme.high;
+    else if (opts.amountSats >= 1_000)   color = activeTheme.medium;
+    else                                 color = activeTheme.small;
+  } else {
+    // Default Aegis theme colors
+    if (opts.amountSats >= 100_000)      color = 0xF1C40F; // Whale Tier: Vibrant Gold
+    else if (opts.amountSats >= 10_000)  color = 0x00E6B4; // High Tier: Aegis Teal
+    else if (opts.amountSats >= 1_000)   color = 0x9B59B6; // Medium Tier: Royal Purple
+    else                                 color = 0x5865F2; // Small Tier: Discord Blurple
+  }
 
   const sender = opts.senderAlias ?? 'Anonymous Booster';
   const satsFormatted = opts.amountSats.toLocaleString();
@@ -327,6 +339,42 @@ export function buildBotStatusEmbed(opts: {
       inline: false
     });
   }
+
+  return embed;
+}
+
+/**
+ * Build a Nostr comment push card embed.
+ */
+export function buildNostrCommentEmbed(opts: {
+  showTitle: string;
+  episodeTitle: string;
+  authorName: string;
+  authorAvatar: string | null;
+  content: string;
+  pubkey: string;
+  createdAt: number;
+}): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setColor(0x7F3E98) // Nostr purple style
+    .setTitle(`💬 Nostr Comment from ${opts.authorName}`)
+    .setDescription(
+      opts.content.length > 800
+        ? `> ${opts.content.slice(0, 797)}...`
+        : `> ${opts.content}`
+    )
+    .setFooter({ text: `via Nostr • ${opts.showTitle}` })
+    .setTimestamp(new Date(opts.createdAt * 1000));
+
+  if (opts.authorAvatar) {
+    embed.setThumbnail(opts.authorAvatar);
+  }
+
+  embed.addFields({
+    name: '🎙️ Episode',
+    value: opts.episodeTitle,
+    inline: false,
+  });
 
   return embed;
 }

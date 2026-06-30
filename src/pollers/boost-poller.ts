@@ -42,22 +42,26 @@ export function startBoostPoller(client: Client): NodeJS.Timer {
     () => getAllWatchedFeeds('BOOSTAGRAM'),
     async (boost: NormalizedBoostagram) => {
       const showTitle = await getShowTitle(boost.feedUrl);
-      const embed = buildBoostEmbed({
-        feedUrl: boost.feedUrl,
-        showTitle,
-        senderAlias: boost.senderAlias,
-        amountSats: boost.amountSats,
-        message: boost.message,
-        appName: boost.appName,
-        episodeTitle: boost.episodeTitle,
-        receivedAt: boost.receivedAt,
-      });
 
       const subscribers = getSubscribersByFeed(boost.feedUrl, 'BOOSTAGRAM');
       for (const sub of subscribers) {
+        if (boost.amountSats < (sub.min_boost_sats ?? 0)) {
+          continue; // Skip alert if below server threshold
+        }
         try {
           const channel = await client.channels.fetch(sub.channel_id) as TextChannel | null;
           if (channel?.isTextBased()) {
+            const embed = buildBoostEmbed({
+              feedUrl: boost.feedUrl,
+              showTitle,
+              senderAlias: boost.senderAlias,
+              amountSats: boost.amountSats,
+              message: boost.message,
+              appName: boost.appName,
+              episodeTitle: boost.episodeTitle,
+              receivedAt: boost.receivedAt,
+              theme: sub.theme ?? 'aegis',
+            });
             await channel.send({ embeds: [embed] });
           }
         } catch (err: unknown) {

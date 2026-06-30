@@ -150,6 +150,9 @@ process.on('uncaughtException', (err) => {
 async function main(): Promise<void> {
   console.log('[Bot] Initializing database...');
   await initDb();
+  console.log('[Bot] Starting web dashboard...');
+  const { startDashboardServer } = await import('./dashboard/server');
+  startDashboardServer(client);
   console.log('[Bot] Database ready. Connecting to Discord...');
   await client.login(DISCORD_TOKEN);
 }
