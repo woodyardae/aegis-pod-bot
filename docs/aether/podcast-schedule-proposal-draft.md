@@ -90,7 +90,39 @@ On-demand playlist (same List shape, no shared clock):
 5. Placement: channel-level only (proposed), or also allow a per-item override for mid-list scheduled inserts? Channel-only keeps v1 simple.
 6. Timezone semantics: confirm that `timezone` is only consulted for calendar cadences and never for `loop` positioning, to avoid ambiguity.
 
+## Why not `<podcast:liveItem>`?
+
+A natural question is whether synced radio could reuse `liveItem` instead of a new tag, since `liveItem` is the one existing element that carries wall-clock timestamps. It cannot serve this role, for three spec reasons:
+
+1. `liveItem` describes a SINGLE window: one required `start`, one recommended `end`, one `status`. It has no per-segment timing, so it cannot express "position = anchor + sum of prior item durations" over an ordered list. You would still compute positioning out of band, now wrapped in a tag whose semantics do not match.
+2. `liveItem` presumes real broadcast infrastructure: the spec expects an `<enclosure>` / `<podcast:alternateEnclosure>` live stream plus `<podcast:contentLink>` to a live destination. Aether SYNCED mode has no stream; every client computes the same position from a shared anchor. A `liveItem` with no real stream is invalid and degrades badly (apps fire a LIVE notification and try to connect to nothing).
+3. `remoteItem` is not a permitted child of `liveItem` (allowed parents are `<channel>`, `<podcast:podroll>`, `<podcast:valueTimeSplit>`, `<podcast:publisher>`). So "a liveItem aggregating remoteItems" is not a sanctioned construction.
+
+`liveItem` remains the right tag for a genuinely live simulcast event (a scheduled premiere everyone truly tunes into together). That is a different feature from infra-free computed-sync radio and is tracked as a distinct station type in `./station-taxonomy.md`.
+
+## Companion proposal: sub-item clipping on `<podcast:remoteItem>`
+
+Scheduling answers WHEN a listener is positioned in the list. It does not answer whether a scheduled entry can be a PARTIAL play of a remote item. Today `remoteItem` is whole-item only (no `startTime` / `duration`), so a station can only concatenate entire tracks/episodes. Real radio needs partial plays, segues, and top-of-hour fractional plays. This is a second namespace gap (see `./pc20-namespace-capability-map.md` section 2, Gap 2).
+
+Proposed minimal, additive extension to `remoteItem`:
+
+```
+<podcast:remoteItem
+    feedGuid="..." itemGuid="..." medium="music"
+    startTime="30" duration="90" />   <!-- play 0:30..2:00 of the target item -->
+```
+
+| Attribute | Required | Type | Default | Description |
+|-----------|----------|------|---------|-------------|
+| `startTime` | No | integer seconds | 0 | Offset into the resolved target item where playback begins. |
+| `duration` | No | integer seconds | full item | Seconds to play before advancing to the next `remoteItem`. Omit for whole-item playback (current behavior). |
+
+Backward compatibility: both attributes are optional and additive. A player that ignores them plays the whole item (today's behavior), so the feed degrades gracefully. Combined with `<podcast:schedule>`, this makes a fully programmable, spec-native synced station possible without re-hosting media. It is deliberately proposed as two separable PRs (scheduling first, clipping second) so each can be adopted independently.
+
+Licensing note (non-normative): clipping a remote file to a sub-range touches the source host's TOS and the content license. The tag only DECLARES the intent; whether a given source permits partial playback is a per-source policy question for the implementer, not something the namespace grants. Aether's own posture on this is documented in `./value-model.md`.
+
 ## Cross-references
 
-- Capability gap this fills: `./pc20-namespace-capability-map.md` section 2 (WHAT IS MISSING).
+- Capability gaps this fills: `./pc20-namespace-capability-map.md` section 2 (Gap 1 scheduling, Gap 2 sub-item clipping).
 - Reference feeds: `./feed-examples/synced-radio-station.xml`, `./feed-examples/on-demand-playlist.xml`.
+- `liveItem` as a distinct live-event station type: `./station-taxonomy.md`.

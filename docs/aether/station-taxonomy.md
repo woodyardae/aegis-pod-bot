@@ -52,6 +52,22 @@ Four orthogonal axes classify every station. A concrete station is one selection
 
 Leaf naming rule for user-created stations: `{content}-{mode}` internal type tag, e.g. `music-synced`, `podcast-ondemand`. Auto-gen stations carry an additional `regen:{cadence}` tag consumed by the scheduler.
 
+### 1a. Container and execution reality (what ships now vs what needs an extension)
+
+The Mode axis (Synced vs On-Demand) describes the listener experience. It hides a more important engineering distinction: WHICH namespace container carries the station, and WHERE the experience executes. Classifying by that shows what is launch-ready on today's spec versus what depends on a namespace extension or Aether's own client.
+
+| Station family | Container | Native on today's spec? | What it needs beyond the feed |
+|---|---|---|---|
+| On-demand playlist | `musicL` feed, ordered `<podcast:remoteItem>` (whole items) | Yes, fully | Nothing. Any PC2.0 list player renders and queues it. |
+| Chart / auto-gen station | same `musicL` feed, remoteItem set recomputed on cadence | Yes, fully | Nothing. Every chart in section 3 is just an auto-regenerated list feed. |
+| Synced radio (whole items) | `musicL` feed + external anchor/position math | Partial | Wall-clock position computed by Aether's client (Gap 1). Degrades to an ordered list in foreign players. |
+| Synced radio with clips/segues | above + sub-item time ranges | No | `remoteItem` `startTime`/`duration` extension (Gap 2), or Aether re-hosting media (avoid). |
+| True live event | `<podcast:liveItem>` + a real stream | Yes, different feature | Actual broadcast infrastructure. This is the ONLY correct use of `liveItem`; it is not the synced-radio container. |
+
+Key point for curation value: a PURE reference list feed routes value to each original creator's own block, and the station owner is invisible to the value flow, so the curation cut is NOT expressible in a pure list feed alone. The cut requires Aether to sit in the playback/value path (per-segment `valueTimeSplit` on played items, or an app-side split in Aether's own client). See `./value-model.md` for the mechanism and the trade-offs. This is why "aggregate by reference" and "aggregator takes a cut" are in tension and the resolution is an architecture choice, not a feed tag.
+
+The `Live-Event Channel` leaf in the table above is the one type that maps to `<podcast:liveItem>`. All other synced leaves are `musicL` feeds positioned by Aether's client, not `liveItem`s.
+
 ---
 
 ## 2. Genre Tree (Aether-facing, < 20 top-level)

@@ -34,6 +34,8 @@ Attributes:
 | `medium` | No | The `<podcast:medium>` type of the remote feed (e.g. `music`). |
 | `title` | No | Free string title for display without a remote lookup. Useful so a station renders track names even if the app does not resolve the pointer. |
 
+No time-range attributes: `remoteItem` has NO `startTime`, `endTime`, `offset`, or `duration`. It references a WHOLE feed or a WHOLE item and cannot address a sub-range (clip) of the target media. This is the root of gap 2 in section 2. Allowed parents per `docs/tags/remote-item.md` are `<channel>`, `<podcast:podroll>`, `<podcast:valueTimeSplit>`, `<podcast:publisher>` only; `liveItem` is NOT a permitted parent, so "a liveItem holding a list of remoteItems" is not a spec-sanctioned construction.
+
 Aether usage: ordered `<podcast:remoteItem>` children at channel level, each carrying `feedGuid` + `itemGuid` + `title`, define playback order. Order in the XML is the playlist order. We never mutate the remote feeds.
 
 Source: `docs/tags/remote-item.md`.
@@ -157,6 +159,21 @@ resolved against the ordered items' cumulative durations. The namespace has no f
 3. Emit a standard `musicL` feed that any PC2.0 player renders as an ordered list. The "it's the same track at the same second for everyone" behavior is enforced by Aether's player/client math, not by any feed tag.
 
 This gap IS the moat: the open ecosystem gives us portable value routing and portable ordered lists, but the wall-clock sync layer is ours to build and, later, to standardize (see file 4, the `<podcast:schedule>` proposal draft).
+
+### Gap 2: no sub-item clipping of a remote item
+
+There is a SECOND, more fundamental gap, surfaced when evaluating whether time-synced radio could be modeled more natively (e.g. as a `liveItem` aggregating `remoteItem`s). The namespace cannot express "play only the range from `t0` to `t1` of that remote track/episode." Concretely:
+
+- `<podcast:remoteItem>` has no `startTime` / `endTime` / `offset` / `duration`. It is whole-item only (section 1.2).
+- `<podcast:valueTimeSplit>` DOES carry `startTime` / `duration` / `remoteStartTime`, but it governs VALUE ROUTING (who is paid during a window), not media playback. `remoteStartTime` attributes value to an offset of the remote content; it does not instruct a player to play that slice. Nothing fetches and renders remote media from a `valueTimeSplit`.
+- `<podcast:chapters>` and soundbite/clip carry time ranges, but only against the item's OWN enclosure, never a remote file.
+
+So partial plays, segues, crossfades, and "top of the hour" fractional plays over remote pointers are not expressible today. This matters because it is the difference between a station that can only concatenate WHOLE remote items and a station that can program like real radio. Two consequences follow:
+
+1. `liveItem` does not rescue this. It has one `start`/`end` for the whole window, no per-segment timing, presumes a live stream enclosure (broadcast infra Aether designed away), and does not even permit `remoteItem` children per the parent list in section 1.2. Using it fits WORSE, not more natively.
+2. The clean native fix is a small extension: optional `startTime` + `duration` on `remoteItem` (or a companion element) so a pointer can address a slice. This is a smaller, more reviewable ask than overloading `liveItem`, and it composes with the `<podcast:schedule>` proposal. See `../podcast-schedule-proposal-draft.md`.
+
+Escape hatch and its cost: Aether could server-side stitch segments into a single real enclosure and use local `chapters`, but that re-hosts / transcodes other creators' media, which breaks the "pointers, not copies" rule and carries licensing / host-TOS exposure. It is a fallback of last resort, not the model.
 
 ---
 
