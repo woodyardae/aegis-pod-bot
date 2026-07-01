@@ -23,9 +23,30 @@ export interface ErrorMetric {
   lastMessage: string | null;
 }
 
+export interface ModuleHealth {
+  status: 'UP' | 'DOWN' | 'DEGRADED';
+  lastHeartbeat: string | null;
+  lastError: string | null;
+}
+
+export interface HealthReport {
+  status: 'HEALTHY' | 'DEGRADED' | 'DOWN';
+  uptimeSeconds: number;
+  startTime: string;
+  modules: Record<string, ModuleHealth>;
+  errorMetrics: ErrorMetric[];
+}
+
 class TelemetryTracker {
   private metrics = new Map<ErrorCode, ErrorMetric>();
   private startTime = new Date();
+  
+  // Track health statuses of individual system components
+  private moduleHealths = new Map<string, {
+    status: 'UP' | 'DOWN' | 'DEGRADED';
+    lastHeartbeat: Date | null;
+    lastError: string | null;
+  }>();
 
   constructor() {
     // Initialize all error codes
@@ -37,6 +58,44 @@ class TelemetryTracker {
         lastMessage: null,
       });
     });
+
+    // Initialize default modules
+    const modules = ['episode-poller', 'boost-poller', 'podping-consumer', 'dashboard-server'];
+    modules.forEach(mod => {
+      this.moduleHealths.set(mod, {
+        status: 'UP',
+        lastHeartbeat: new Date(),
+        lastError: null,
+      });
+    });
+  }
+
+  /** Record poller/module heartbeat activity */
+  public recordHeartbeat(moduleName: string): void {
+    const health = this.moduleHealths.get(moduleName) || {
+      status: 'UP',
+      lastHeartbeat: null,
+      lastError: null
+    };
+    health.status = 'UP';
+    health.lastHeartbeat = new Date();
+    this.moduleHealths.set(moduleName, health);
+  }
+
+  /** Record module-specific operational failures */
+  public recordModuleFailure(moduleName: string, error: unknown, setStatus: 'DEGRADED' | 'DOWN' = 'DEGRADED'): void {
+    const health = this.moduleHealths.get(moduleName) || {
+      status: 'UP',
+      lastHeartbeat: null,
+      lastError: null
+    };
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    
+    health.status = setStatus;
+    health.lastError = errorMsg;
+    this.moduleHealths.set(moduleName, health);
+
+    console.error(`[Telemetry] [Health Alert] Module "${moduleName}" failed: ${errorMsg}`);
   }
 
   /** Record an occurrence of a structured error */
@@ -76,6 +135,40 @@ class TelemetryTracker {
     return code;
   }
 
+  /** Generate the overall system health report */
+  public getHealthReport(): HealthReport {
+    let overallStatus: 'HEALTHY' | 'DEGRADED' | 'DOWN' = 'HEALTHY';
+    const modules: Record<string, ModuleHealth> = {};
+
+    let downCount = 0;
+    let degradedCount = 0;
+
+    this.moduleHealths.forEach((val, key) => {
+      modules[key] = {
+        status: val.status,
+        lastHeartbeat: val.lastHeartbeat ? val.lastHeartbeat.toISOString() : null,
+        lastError: val.lastError,
+      };
+
+      if (val.status === 'DOWN') downCount++;
+      if (val.status === 'DEGRADED') degradedCount++;
+    });
+
+    if (downCount > 0) {
+      overallStatus = 'DOWN';
+    } else if (degradedCount > 0) {
+      overallStatus = 'DEGRADED';
+    }
+
+    return {
+      status: overallStatus,
+      uptimeSeconds: this.getUptimeSeconds(),
+      startTime: this.startTime.toISOString(),
+      modules,
+      errorMetrics: this.getMetrics(),
+    };
+  }
+
   /** Get all error metrics */
   public getMetrics(): ErrorMetric[] {
     return Array.from(this.metrics.values());
@@ -88,3 +181,4 @@ class TelemetryTracker {
 }
 
 export const telemetry = new TelemetryTracker();
+export type { TelemetryTracker as TelemetryTrackerClass };

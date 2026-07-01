@@ -119,6 +119,10 @@ aegis-pod-bot  →  Podcast Index API   (feed lookup, search)
 | `aegis-pod-bot` | This repo — Discord community integration layer |
 | `podping.alpha` | Rust P2P gossip podping node — Phase 2+ live event source |
 
+## Naming & Module Catalog
+
+See [architecture_and_naming.md](docs/architecture_and_naming.md) for details on our Greek module designations (Aegis, Aether, Polis, Horai, Akroasis, Keryx, Rhema, Pneuma, Asphaleia).
+
 ## License
 
 Apache-2.0

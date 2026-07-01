@@ -1,6 +1,7 @@
 import { EmbedBuilder, Colors } from 'discord.js';
 import { type FeedScanResult } from '../modules/feed-scanner';
 import { THEMES } from './themes';
+import { type AgoraRoom } from '../modules/agora-room';
 
 function formatDiscordTimestamp(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -375,6 +376,48 @@ export function buildNostrCommentEmbed(opts: {
     value: opts.episodeTitle,
     inline: false,
   });
+
+  return embed;
+}
+
+/**
+ * Build the Agora Room Status card embed.
+ */
+export function buildAgoraRoomEmbed(room: AgoraRoom, extrapolatedPositionMs: number): EmbedBuilder {
+  const isPlayingLabel = room.isPlaying ? '🟢 Active Playout' : '🔴 Stopped';
+  const listenerCount = room.listeners.length;
+  
+  const formatTime = (ms: number) => {
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const currentPosStr = formatTime(extrapolatedPositionMs);
+
+  const embed = new EmbedBuilder()
+    .setColor(room.isPlaying ? 0x00D4AA : 0x4A4A6A)
+    .setTitle(`Agora Room: ${room.episodeTitle}`)
+    .setDescription(`📻 **Now Playing:** [Enclosure Link](${room.feedUrl})\n✨ **Status:** ${isPlayingLabel}\n⏱️ **Position:** \`${currentPosStr}\``)
+    .setFooter({ text: `Agora Listening Room • ID: ${room.roomId}` })
+    .setTimestamp();
+
+  if (room.hostUserId) {
+    embed.addFields({ name: '👑 Room Host', value: `<@${room.hostUserId}>`, inline: true });
+  }
+
+  embed.addFields({ name: '👥 Attendance', value: `\`${listenerCount} listeners\``, inline: true });
+
+  if (room.listeners.length > 0) {
+    const presenceList = room.listeners.map(l => {
+      const walletPart = l.walletAddress ? ` ⚡ (\`${l.walletAddress}\`)` : '';
+      return `• <@${l.userId}>${walletPart}`;
+    }).join('\n');
+    embed.addFields({ name: '👥 Presence List', value: presenceList.slice(0, 1024), inline: false });
+  } else {
+    embed.addFields({ name: '👥 Presence List', value: '_Room is currently empty._', inline: false });
+  }
 
   return embed;
 }

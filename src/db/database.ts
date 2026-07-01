@@ -110,11 +110,21 @@ function createSchema(): void {
       PRIMARY KEY (guild_id, event_id)
     );
 
+    CREATE TABLE IF NOT EXISTS announced_episodes (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      channel_id   TEXT NOT NULL,
+      feed_url     TEXT NOT NULL,
+      episode_guid TEXT NOT NULL,
+      announced_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(channel_id, feed_url, episode_guid)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_subscriptions_guild ON guild_subscriptions(guild_id);
     CREATE INDEX IF NOT EXISTS idx_subscriptions_feed  ON guild_subscriptions(feed_url);
     CREATE INDEX IF NOT EXISTS idx_boosts_feed         ON boostagram_cache(feed_url);
     CREATE INDEX IF NOT EXISTS idx_boosts_received     ON boostagram_cache(received_at);
     CREATE INDEX IF NOT EXISTS idx_chapters_feed_guid  ON chapter_metadata(feed_url, episode_guid);
+    CREATE INDEX IF NOT EXISTS idx_announced_channel_feed ON announced_episodes(channel_id, feed_url);
   `);
 
   // Dynamic migration: add columns to guild_subscriptions if they don't exist
@@ -264,6 +274,22 @@ export function isEpisodeSeen(feedUrl: string, guid: string): boolean {
   const result = db.exec(
     `SELECT 1 FROM episode_seen WHERE feed_url = ? AND episode_guid = ?`,
     [feedUrl, guid],
+  );
+  return result.length > 0 && result[0].values.length > 0;
+}
+
+export function markEpisodeAnnounced(channelId: string, feedUrl: string, guid: string): void {
+  db.run(
+    `INSERT OR IGNORE INTO announced_episodes (channel_id, feed_url, episode_guid) VALUES (?, ?, ?)`,
+    [channelId, feedUrl, guid],
+  );
+  persist();
+}
+
+export function isEpisodeAnnounced(channelId: string, feedUrl: string, guid: string): boolean {
+  const result = db.exec(
+    `SELECT 1 FROM announced_episodes WHERE channel_id = ? AND feed_url = ? AND episode_guid = ?`,
+    [channelId, feedUrl, guid],
   );
   return result.length > 0 && result[0].values.length > 0;
 }

@@ -16,6 +16,7 @@ import * as earningsCmd      from './commands/earnings';
 import * as verifyCmd        from './commands/verify';
 import * as setupCmd         from './commands/setup';
 import * as setupChannelsCmd from './commands/setup-channels';
+import * as agoraCmd         from './commands/agora';
 
 const TOKEN     = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
@@ -25,7 +26,7 @@ if (!TOKEN || !CLIENT_ID) {
   process.exit(1);
 }
 
-const commands = [statusCmd, watchCmd, boostsCmd, earningsCmd, verifyCmd, setupCmd, setupChannelsCmd].map((cmd) =>
+const commands = [statusCmd, watchCmd, boostsCmd, earningsCmd, verifyCmd, setupCmd, setupChannelsCmd, agoraCmd].map((cmd) =>
   cmd.data.toJSON()
 );
 
