@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AEGIS AETHER  -  ON-DEMAND playlist feed  -  EXAMPLE
+  ====================================================
+  Mode: ON-DEMAND. No shared wall-clock. Each listener starts at item 1 and
+  plays in order at their own pace. Same spec shape as the synced station
+  (medium=musicL, ordered remoteItems, value routing, curation cut) but with
+  NO anchor-time semantics: order is just playlist order.
+
+  Mixed content: podcast segments + Wavlake music tracks in one list. medium
+  is still musicL here (a curated list dominated by music); use mixed if the
+  blend is heavier on non-music. Each remoteItem carries its own medium.
+
+  Per-segment REMOTE VALUE ROUTING via valueTimeSplit + nested remoteItem:
+  remotePercentage to the original creator's feed, residual to the station
+  owner as an ADDITIONAL recipient (curation cut). Originals never mutated.
+
+  All GUIDs / URLs FICTIONAL but realistically shaped. Wavlake feed/track
+  GUIDs are illustrative, not real Wavlake identifiers.
+  (See ../pc20-namespace-capability-map.md.)
+-->
+<rss version="2.0"
+     xmlns:podcast="https://podcastindex.org/namespace/1.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Deep Work Rotation  -  AETHER Playlist</title>
+    <link>https://aether.example.net/stations/deep-work-rotation</link>
+    <language>en</language>
+    <description>An on-demand curated rotation of focus music and short spoken segments. Play top to bottom at your own pace.</description>
+
+    <podcast:guid>9d4f2a11-8c7b-4e6a-b0d3-c0de5tondemand1</podcast:guid>
+
+    <!-- ON-DEMAND is still a List of remote items. -->
+    <podcast:medium>musicL</podcast:medium>
+
+    <itunes:author>AETHER Curator: focusframe</itunes:author>
+    <itunes:image href="https://cdn.aether.example.net/art/deep-work-rotation.jpg"/>
+
+    <!-- Channel-level fallback value block: station owner default share so
+         base-V4V players still route sanely. -->
+    <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+      <podcast:valueRecipient
+        name="focusframe (AETHER station owner)"
+        type="node"
+        address="02f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d"
+        split="100"/>
+    </podcast:value>
+
+    <!-- ORDERED PLAYLIST BODY (mixed podcast + Wavlake music). -->
+    <podcast:remoteItem
+      feedGuid="a10f0001-0000-4000-8000-wavlakemusic01"
+      itemGuid="wav-track-01"
+      medium="music"
+      title="Signal Bloom  -  Ari Sund"/>
+    <podcast:remoteItem
+      feedGuid="b20f0002-0000-4000-8000-podcastfeed02"
+      itemGuid="pod-ep-42-clip"
+      medium="podcast"
+      title="On Focus (excerpt)  -  The Deep Work Show"/>
+    <podcast:remoteItem
+      feedGuid="a10f0003-0000-4000-8000-wavlakemusic03"
+      itemGuid="wav-track-03"
+      medium="music"
+      title="Low Tide Logic  -  Nima Vell"/>
+    <podcast:remoteItem
+      feedGuid="a10f0004-0000-4000-8000-wavlakemusic04"
+      itemGuid="wav-track-04"
+      medium="music"
+      title="Quiet Machine  -  Osei &amp; the Frame"/>
+    <podcast:remoteItem
+      feedGuid="b20f0005-0000-4000-8000-podcastfeed05"
+      itemGuid="pod-ep-07-clip"
+      medium="podcast"
+      title="Two-Minute Reset  -  Breathe Lab"/>
+
+    <!-- ===== ITEM 1  -  Wavlake music ===== -->
+    <item>
+      <title>Signal Bloom  -  Ari Sund</title>
+      <guid isPermaLink="false">aether-od-0001</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/wav-track-01.mp3"
+                 length="6120000" type="audio/mpeg"/>
+      <itunes:duration>184</itunes:duration>
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <!-- 92% to the Wavlake track's own feed, 8% curation residual. -->
+        <podcast:valueTimeSplit startTime="0" duration="184" remoteStartTime="0" remotePercentage="92">
+          <podcast:remoteItem
+            feedGuid="a10f0001-0000-4000-8000-wavlakemusic01"
+            itemGuid="wav-track-01"
+            medium="music"/>
+        </podcast:valueTimeSplit>
+        <podcast:valueRecipient
+          name="focusframe (AETHER curation cut)"
+          type="node"
+          address="02f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d"
+          split="100"/>
+      </podcast:value>
+    </item>
+
+    <!-- ===== ITEM 2  -  podcast excerpt ===== -->
+    <item>
+      <title>On Focus (excerpt)  -  The Deep Work Show</title>
+      <guid isPermaLink="false">aether-od-0002</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/pod-ep-42-clip.mp3"
+                 length="3980000" type="audio/mpeg"/>
+      <itunes:duration>119</itunes:duration>
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <!-- remoteStartTime=540: this excerpt begins 9:00 into the source
+             episode, so payment metadata timestamps stay correct. -->
+        <podcast:valueTimeSplit startTime="0" duration="119" remoteStartTime="540" remotePercentage="85">
+          <podcast:remoteItem
+            feedGuid="b20f0002-0000-4000-8000-podcastfeed02"
+            itemGuid="pod-ep-42-clip"
+            medium="podcast"/>
+        </podcast:valueTimeSplit>
+        <podcast:valueRecipient
+          name="focusframe (AETHER curation cut)"
+          type="node"
+          address="02f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d"
+          split="100"/>
+      </podcast:value>
+    </item>
+
+    <!-- ===== ITEM 3  -  Wavlake music ===== -->
+    <item>
+      <title>Low Tide Logic  -  Nima Vell</title>
+      <guid isPermaLink="false">aether-od-0003</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/wav-track-03.mp3"
+                 length="7010000" type="audio/mpeg"/>
+      <itunes:duration>209</itunes:duration>
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <podcast:valueTimeSplit startTime="0" duration="209" remoteStartTime="0" remotePercentage="92">
+          <podcast:remoteItem
+            feedGuid="a10f0003-0000-4000-8000-wavlakemusic03"
+            itemGuid="wav-track-03"
+            medium="music"/>
+        </podcast:valueTimeSplit>
+        <podcast:valueRecipient
+          name="focusframe (AETHER curation cut)"
+          type="node"
+          address="02f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d"
+          split="100"/>
+      </podcast:value>
+    </item>
+
+    <!-- ===== ITEM 4  -  Wavlake music ===== -->
+    <item>
+      <title>Quiet Machine  -  Osei &amp; the Frame</title>
+      <guid isPermaLink="false">aether-od-0004</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/wav-track-04.mp3"
+                 length="6640000" type="audio/mpeg"/>
+      <itunes:duration>198</itunes:duration>
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <podcast:valueTimeSplit startTime="0" duration="198" remoteStartTime="0" remotePercentage="92">
+          <podcast:remoteItem
+            feedGuid="a10f0004-0000-4000-8000-wavlakemusic04"
+            itemGuid="wav-track-04"
+            medium="music"/>
+        </podcast:valueTimeSplit>
+        <podcast:valueRecipient
+          name="focusframe (AETHER curation cut)"
+          type="node"
+          address="02f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d"
+          split="100"/>
+      </podcast:value>
+    </item>
+
+    <!-- ===== ITEM 5  -  podcast excerpt ===== -->
+    <item>
+      <title>Two-Minute Reset  -  Breathe Lab</title>
+      <guid isPermaLink="false">aether-od-0005</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/pod-ep-07-clip.mp3"
+                 length="4020000" type="audio/mpeg"/>
+      <itunes:duration>124</itunes:duration>
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <podcast:valueTimeSplit startTime="0" duration="124" remoteStartTime="0" remotePercentage="85">
+          <podcast:remoteItem
+            feedGuid="b20f0005-0000-4000-8000-podcastfeed05"
+            itemGuid="pod-ep-07-clip"
+            medium="podcast"/>
+        </podcast:valueTimeSplit>
+        <podcast:valueRecipient
+          name="focusframe (AETHER curation cut)"
+          type="node"
+          address="02f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d"
+          split="100"/>
+      </podcast:value>
+    </item>
+  </channel>
+</rss>

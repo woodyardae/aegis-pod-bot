@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AEGIS AETHER  -  LEGACY / CONTROL feed  -  EXAMPLE (no valueTimeSplit)
+  =====================================================================
+  Purpose: CONTROL for value-routing-test-plan.md (feed iii).
+
+  This feed deliberately has NO <podcast:valueTimeSplit> and NO remote
+  value routing. It carries a single, plain <podcast:value> block only.
+  It exists to observe the FALLBACK shape: a player streams 100% of sats
+  to the one value block it sees, with no per-segment remote routing.
+
+  On an Aether station, that single block would be the STATION's local
+  block, which is exactly the "danger case" fallback in value-model.md
+  (station silently collects 100%, creators get nothing). This control
+  isolates and documents that behavior in a player, independent of any
+  remote-resolution capability.
+
+  All GUIDs / URLs below are FICTIONAL but realistically shaped.
+-->
+<rss version="2.0"
+     xmlns:podcast="https://podcastindex.org/namespace/1.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Plain Control Feed  -  AETHER Test</title>
+    <link>https://aether.example.net/test/legacy-plain</link>
+    <language>en</language>
+    <description>Control feed with a single plain value block and no valueTimeSplit. Used to observe player fallback routing.</description>
+
+    <podcast:guid>9f0c1122-7e44-4b90-a3d1-c0de5ta7c0n7</podcast:guid>
+
+    <!-- Ordinary episodic medium: NOT musicL, NOT a list. A normal podcast. -->
+    <podcast:medium>podcast</podcast:medium>
+
+    <itunes:author>AETHER Test Harness</itunes:author>
+
+    <!--
+      SINGLE plain value block. One recipient we control (recv-station in the
+      test plan). A V4V player streams 100% of sats HERE. No remote routing,
+      no valueTimeSplit, nothing to resolve. This is the whole point.
+    -->
+    <podcast:value type="lightning" method="keysend">
+      <podcast:valueRecipient
+          name="Control Recipient (recv-station)"
+          type="node"
+          address="03aether0000000000000000000000000000000000000000000000000000000000"
+          split="100"/>
+    </podcast:value>
+
+    <item>
+      <title>Control Episode 1</title>
+      <guid isPermaLink="false">ctrl-ep-0001</guid>
+      <enclosure
+          url="https://cdn.aether.example.net/test/control-ep1.mp3"
+          length="4800000"
+          type="audio/mpeg"/>
+      <itunes:duration>600</itunes:duration>
+      <!--
+        No item-level value override, no valueTimeSplit. The channel value
+        block above applies for the whole 600s. Expected in the test plan:
+        10 min @ 100 sats/min = 1,000 sats, ALL to the single recipient.
+      -->
+    </item>
+  </channel>
+</rss>
