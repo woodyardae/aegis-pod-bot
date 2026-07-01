@@ -177,6 +177,26 @@ Escape hatch and its cost: Aether could server-side stitch segments into a singl
 
 ---
 
+## 2a. CLIPPING POLICY: TOS AND RIGHTS GUARDRAILS
+
+Gap 2 (above) establishes that sub-item clipping of a remote item is a namespace extension, not something available today. Even once the `remoteItem` `startTime`/`duration` extension exists (or if Aether implements clipping app-side ahead of any namespace change, per `./value-model.md` section 4), clipping touches rights and hosting-TOS territory that whole-item `remoteItem` playback does not. This section is the policy Aether applies regardless of implementation mechanism.
+
+The distinction that matters: playing a WHOLE remote item end to end is the sanctioned V4V model every source in this catalog already expects (a listen is a listen). Playing only a SLICE of someone else's hosted media is a different act: it changes what portion of their content is consumed, may separate a track/segment from surrounding context the creator intended, and touches the hosting platform's terms of service around how its media may be fetched and presented.
+
+### Clipping policy by source type
+
+| Source type | Definition | Clipping status | Rationale |
+|---|---|---|---|
+| Opted-in Aether-native creators | Creators who publish through or explicitly register with Aether and opt into clip-eligible playback (e.g. via a station-owner or creator-facing setting) | **ALLOWED** | Explicit, revocable consent from the rights holder is the only condition under which slicing someone else's media by default is acceptable. |
+| Permissive-licensed sources | Feeds carrying a clear open license (e.g. Creative Commons variants that permit derivative/partial use) or a platform whose own terms explicitly permit third-party partial playback (verify per platform; do not assume) | **CAUTION** | License permits it in principle, but license terms vary (attribution, non-derivative clauses, commercial-use restrictions) and must be checked per source before enabling. Treat as allowed only after a specific license-term review, not as a blanket category. |
+| Unknown third-party sources | Any feed where no explicit clip consent or verified permissive license exists (the default state for most of the open podcast/music ecosystem, including the flagship anchors in `launch-catalog.md`) | **PROHIBITED** | No consent basis. Whole-item `remoteItem` playback remains fully allowed for these sources (that is the sanctioned model); only sub-range extraction is blocked. |
+
+### No silent re-hosting without a rights policy
+
+Independent of the clipping question: Aether does not re-host, transcode, or permanently store a copy of another creator's media without an explicit rights policy covering that action. The architecture in `./value-model.md` section 4 (app-side execution) is deliberately designed so that even clipping happens by streaming the source live and presenting only the declared range, not by producing and serving a stored, pre-cut file. If a future implementation needs a stored derivative (for latency, reliability, or format normalization), that requires: (a) confirming the source falls in the ALLOWED or reviewed-CAUTION tier above, (b) a retention/deletion policy tied to the original creator's ability to revoke consent, and (c) attribution preserved in whatever is stored. Silent re-hosting outside these conditions is out of scope for Aether and is explicitly called out here so it is never treated as an implementation detail to be decided later without rights review.
+
+---
+
 ## 3. REMOTE VALUE ROUTING REALITY CHECK
 
 Two distinct capabilities must not be conflated:

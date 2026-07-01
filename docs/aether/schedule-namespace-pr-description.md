@@ -1,5 +1,7 @@
 # PR description draft: add `<podcast:schedule>` for wall-clock positioning of List feeds
 
+This file IS the ready-to-paste GitHub PR description artifact for the `podcast-namespace` repo (problem statement, proposed fields, non-breaking/migration notes, all below). It intentionally lives under this filename rather than a second `podcast-schedule-pr-draft.md` to avoid two near-duplicate PR-description files drifting apart; link here from anywhere that needs "the PR draft."
+
 Status: DRAFT. Do NOT open this PR yet. This is the cover text for a future PR / RFC against `Podcastindex-org/podcast-namespace`. The spec write-up it references (`./podcast-schedule-proposal-draft.md`) and the reference feeds are still internal to AEGIS AETHER and want live interop testing before we engage the community.
 
 ---

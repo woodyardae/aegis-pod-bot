@@ -91,6 +91,34 @@ For a player to PASS as Aether-capable:
 - PASS-boundary: at a segment boundary the recipient set switches to the next remote block with the cut preserved.
 - FAIL modes: (1) all sats to one block (no remote resolution -> fallback); (2) remote paid but cut missing (player ignores local block during split); (3) cut paid but remote unresolved (player paid only the local/fallback); (4) nothing streamed (no V4V).
 
+## Certification checklist (per-capability pass/fail, first certification run)
+
+The tests above prove routing correctness with real ledger numbers. For a quick first-pass CERTIFICATION run before the full measured test, walk each of the three priority players through this checklist. A player must clear every capability to be marked Aether-certified; a player that clears "subscribe" and "remoteItem playback" but fails "curation cut behavior" is certified for degraded/read-only use (playback works, value routing does not) rather than full certification.
+
+| Capability | What to check | Pass condition | Fountain | CurioCaster | Podverse |
+|---|---|---|---|---|---|
+| Subscribe | Add `synced-radio-station.xml` / `on-demand-playlist.xml` by URL | Feed parses, renders as an ordered list (no error, no fallback-to-empty) | | | |
+| remoteItem playback | Play through the ordered list | Each `remoteItem` resolves to real audio and plays in XML order | | | |
+| Sats stream | Enable streaming at a fixed rate (100 sats/min) | Player visibly streams sats at the set rate during playback (any recipient) | | | |
+| Value split behavior | Inspect payments during a `valueTimeSplit` segment | Player either (a) resolves the remote block and pays 45/27/18 to A1/A2/A3, or (b) is confirmed to NOT resolve it (falls back to one block) — either is a determinate, recorded result | | | |
+| Curation cut behavior | Check `recv-station` during the same segment | 10% (or configured X%) lands at `recv-station` concurrently with any remote payment | | | |
+
+Fill each cell with PASS, FAIL, or PARTIAL plus a one-line note during the actual run; this table is the artifact to file per player, feeding the metrics table below and the launch-gate decision.
+
+### Expected degradation behavior for non-supporting players
+
+Not every player is expected to pass every row, and a FAIL on value/cut rows is not a bug in Aether's feed; it is the documented fallback ladder from `value-model.md` section 2. Expected shape by support tier:
+
+| Support tier | Subscribe | remoteItem playback | Sats stream | Value split | Curation cut | Where sats actually go |
+|---|---|---|---|---|---|---|
+| Full remote-VTS support (target for Fountain/CurioCaster/Podverse) | PASS | PASS | PASS | PASS (45/27/18 pattern) | PASS (10%/`X`% to station) | Correct: original creators + station cut |
+| Structural VTS support, no remote resolution | PASS | PASS | PASS | FAIL (single block, not 45/27/18) | FAIL or accidental PASS* | Station's local block collects 100% for that segment (*if the local block happens to be what the player falls back to, the "cut" looks like it passed but only because ALL sats landed there, not just the cut share; note this explicitly, do not mark a true PASS*) |
+| Base V4V, no VTS at all | PASS | PASS | PASS | FAIL (no per-segment switching observed at all) | Same as above | Channel-level `<podcast:value>` fallback block, typically the station owner |
+| No V4V | PASS | PASS | FAIL (no streaming UI/behavior) | N/A | N/A | No sats move; feed still plays as an ordered list |
+| No `musicL`/List support | Degraded PASS (renders as plain items, not a curated list) | PASS (each item still has its own enclosure) | Depends on base V4V support | Depends on base V4V support | Depends on base V4V support | Playback and any V4V behavior unaffected by the medium hint being ignored |
+
+Use this table to interpret a FAIL: a value/cut FAIL paired with PASS on subscribe/playback/streaming is the EXPECTED shape for a player that has not implemented remote value routing, and should be logged as "confirmed non-support" rather than treated as a defect to chase. Only escalate if the observed behavior does not match any row (e.g. sats disappear entirely, or payments go somewhere unexplained) since that indicates an actual integration bug rather than a known ecosystem gap.
+
 ## Metrics table (signal that proves routing worked, per player)
 
 | Player | Primary proof signal | Secondary signal | Expected PASS observation | Notes / confidence |

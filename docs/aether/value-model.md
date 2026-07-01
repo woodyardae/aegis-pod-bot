@@ -217,7 +217,46 @@ Because Aether owns declaration but not execution, the fallback ladder in sectio
 
 Same declaration, three execution outcomes. Aether's leverage is limited to (1) making the declaration correct, (2) shaping the local/fallback block honestly so degradation is less harmful, and (3) steering listeners toward execution engines proven to honor remote resolution. It cannot force any player to execute the split it declared.
 
-## 4. Open spec ambiguities
+## 4. Canonical architecture: app-side execution
+
+Sections 1-3 establish that Aether owns declaration (the feed) but not execution (the player's wallet), and that a PURE reference feed cannot carry a curation cut because the station owner is invisible to the value flow unless Aether sits in the playback path. This section resolves that: **Aether's canonical architecture executes value routing, wall-clock sync, and clipping inside Aether's own client, against the listener's own non-custodial wallet.** The published feed remains the portable fallback for every other player.
+
+### The model
+
+1. **Non-custodial wallet.** The listener connects their own Lightning wallet to the Aether client via NWC (Nostr Wallet Connect) or a browser WebLN provider (e.g. an Alby extension). Aether never holds a balance and never touches the funds; it only sends the connected wallet payment instructions. This removes custodial exposure entirely for the connected-wallet path (see `preseeding-grant-design.md` for the separate, deliberately custodial pre-seed grant, which is a distinct, small, spend-restricted balance, not general custody of listener funds).
+2. **App-side sync.** The Aether client computes `position(now) = (now - anchorEpoch) mod totalCycleDuration` itself (SYNCED mode) or tracks the listener's playhead (ON-DEMAND mode), per section 2. This does not depend on any player capability; it is Aether's own code.
+3. **App-side curation cut.** As each segment plays, the Aether client itself computes the split (`remotePercentage = 100 - X` against the resolved remote value block, per section 1) and streams sats directly: `X%` to the station owner, the remainder to the original creators' own recipients, in their own proportions. The cut is not left to a third-party player's willingness to resolve `valueTimeSplit`; Aether's client always applies it.
+4. **App-side clipping.** Where a station entry is a partial play (see the sub-item clipping proposal in `./podcast-schedule-proposal-draft.md` and the TOS guardrails in `./pc20-namespace-capability-map.md`), the Aether client streams only the declared range and computes sats only for that window, live, rather than serving a pre-cut re-hosted file.
+5. **Feed fallback in non-Aether players.** The published PC2.0 feed is unchanged by this architecture: it still declares `remoteItem` order, `medium=musicL`, and per-segment `valueTimeSplit` exactly as in `feed-examples/`. A listener using Podverse, CurioCaster, or any other PC2.0 app gets the degradation ladder from section 2: full remote-value resolution if the player supports it, channel-level fallback (100% to the station's local block) if it does not, or plain audio with no value routing if the player has no V4V at all. Aether's own app is simply the ONE player guaranteed to execute the full declaration correctly, because Aether wrote it.
+
+### Tradeoff: app-side vs feed-path/re-host vs hybrid
+
+| | App-side (Aether client executes) | Feed-path / re-host (cut rides on `valueTimeSplit` in Aether-served items) | Hybrid (both) |
+|---|---|---|---|
+| Custody | None. Listener's own wallet (NWC/WebLN); Aether never holds general funds. | None required by the split itself, but re-hosting audio typically means Aether also proxies bandwidth/CDN costs. | Same as app-side for the app path; feed path unchanged. |
+| Curation cut reliability | Always lands; Aether's own code executes it every time. | Only lands in players that resolve remote `valueTimeSplit` (UNCONFIRMED per app, section 3) or that stream from Aether-hosted items at all. | Lands reliably in Aether's app; best-effort elsewhere. |
+| Player-support dependency | None. Full experience does not depend on any third-party player's spec support. | High. Gated on `player-compatibility-matrix.md`; most players today do not resolve the remote case correctly. | Reduced but not eliminated for non-Aether players. |
+| Content rights / TOS exposure | Low for whole-item playback; clipping exposure is scoped to Aether's own live-stream-and-clip behavior (see clipping guardrails). | Higher: re-hosting/transcoding another creator's media to attach a local value block breaks "pointers, not copies" and touches source TOS/licensing regardless of clipping. | Carries the feed-path's rights exposure in addition to app-side's. |
+| Build cost | Requires shipping and maintaining an Aether client (mobile/web) that does sync + split + wallet wiring. | Lower app burden, but the underlying re-hosting infrastructure (storage, bandwidth, rights clearance) is itself substantial and ongoing. | Highest: both an app and re-hosting infra to build and maintain. |
+| Reach without an Aether app | None; a listener without the Aether client gets the degraded feed experience only (no cut, ordered playback). | Some, in the subset of players that both resolve remote `valueTimeSplit` correctly AND are willing to stream Aether-hosted enclosures. | Same reach as feed-path for non-Aether players, plus full experience in Aether's app. |
+| Recommendation | **Canonical model.** Resolves custody, cut reliability, and clipping exposure together without depending on ecosystem adoption. | Not recommended as primary; the re-hosting requirement conflicts with the never-mutate/never-copy posture stated throughout this doc set. | Not justified at launch: the added re-hosting infra and rights exposure buy only marginal reach in players whose remote-value support is unverified anyway. Revisit if interop testing (`value-routing-test-plan.md`) proves strong multi-player support. |
+
+### Worked example: sats/min with the curation cut, app-side
+
+Listener streams at 100 sats/minute inside the Aether app, listening to a segment whose original creator value block is A1=50/A2=30/A3=20, at the default 5% cut (`remotePercentage="95"`):
+
+```
+Per minute, streamed by the Aether client from the listener's own wallet:
+  A1 (creator)         0.95 * 50% = 47.5 sats/min
+  A2 (creator)         0.95 * 30% = 28.5 sats/min
+  A3 (creator)         0.95 * 20% = 19.0 sats/min
+  Station owner (cut)  0.05       =  5.0 sats/min
+                        total     = 100.0 sats/min
+```
+
+Over a 10-minute segment: A1 = 475, A2 = 285, A3 = 190, station = 50, total = 1,000 sats. The Aether client computes and sends all four payments directly from the listener's connected wallet at the streaming cadence; no party other than the listener's own wallet ever custodies the funds. If the same listener instead used a non-Aether player that does not resolve remote `valueTimeSplit`, the same 1,000 sats over 10 minutes would go entirely to whatever single value block that player sees (typically the station's local block, per the section 2 fallback ladder), and creators would receive nothing for that stretch. That contrast is the concrete case for the canonical model.
+
+## 5. Open spec ambiguities
 
 - The two mirror sources phrase `remotePercentage` slightly differently (one reads "additive on top"). The proposal (#512) and the primary tag doc are clear it is a PORTION of the segment (remote gets X%, local keeps 100 - X%). We build on the portion reading. If a specific target player implements the additive reading, our cut math inverts; verify against the actual player before launch.
 - The spec does not define behavior when `remotePercentage` is present alongside child `valueRecipient` tags (spec says EITHER remoteItem OR valueRecipients, not both), so the "put station owner in the local block" approach relies on the parent item `<podcast:value>` for the local share, NOT on mixing recipients into the split. Keep them separate.
