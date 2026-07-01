@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AEGIS AETHER  -  SYNCED (virtual radio) station feed  -  EXAMPLE
+  ================================================================
+  Mode: SYNCED. There is NO broadcast infrastructure. Every listener's
+  client computes the same wall-clock position from a shared anchor:
+      position(now) = (now - anchorEpoch) mod totalCycleDuration
+  resolved against the ordered items' cumulative durations.
+
+  The namespace has NO tag to carry anchorEpoch / mode / cadence, so those
+  live in Aether's backend. This feed is a plain, spec-valid medium=musicL
+  List of ordered remote items: any PC2.0 player renders it as a curated
+  list and degrades gracefully. The sync math is enforced by the Aether
+  client, not by any tag here. (See ../pc20-namespace-capability-map.md sec 2.)
+
+  All GUIDs / URLs below are FICTIONAL but realistically shaped.
+-->
+<rss version="2.0"
+     xmlns:podcast="https://podcastindex.org/namespace/1.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Midnight Synthwave Drift  -  AETHER Station</title>
+    <link>https://aether.example.net/stations/midnight-synthwave-drift</link>
+    <language>en</language>
+    <description>A synced virtual-radio station: the same track at the same second for every listener. Curated on AEGIS AETHER.</description>
+
+    <!-- Feed-level GUID: stable identity for this station feed. Fictional. -->
+    <podcast:guid>7b1e9c40-3a2f-4d88-9f21-c0de5ta71000</podcast:guid>
+
+    <!-- medium=musicL: this feed is a LIST of remote music items, not local
+         enclosures. PC2.0-aware apps treat the body as an ordered curated list. -->
+    <podcast:medium>musicL</podcast:medium>
+
+    <itunes:author>AETHER Curator: nightdrive</itunes:author>
+    <itunes:image href="https://cdn.aether.example.net/art/midnight-drift.jpg"/>
+
+    <!--
+      CHANNEL-LEVEL VALUE BLOCK (graceful fallback).
+      Players that support only base V4V (no valueTimeSplit) pay THIS block.
+      We keep it sane: the station owner takes a modest default share so that
+      a non-VTS player still routes something sensible rather than nothing.
+      Per-segment routing to original creators happens in each item's
+      valueTimeSplit below.
+    -->
+    <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+      <podcast:valueRecipient
+        name="nightdrive (AETHER station owner)"
+        type="node"
+        address="03a1b2c3d4e5f60718293a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f70819"
+        split="100"/>
+    </podcast:value>
+
+    <!--
+      ORDERED STATION BODY.
+      Order in the XML == playback order == the synthetic timeline. Aether
+      places each remoteItem on the combined wall-clock timeline server-side.
+      Each remoteItem carries feedGuid + itemGuid + title so the track name
+      renders even in apps that do not resolve the pointer.
+    -->
+    <podcast:remoteItem
+      feedGuid="c2f9a880-11ee-4a33-8b7c-0000trackaaa1"
+      itemGuid="track-aaa1-0001"
+      medium="music"
+      title="Neon Rain  -  Kova Reyes"/>
+    <podcast:remoteItem
+      feedGuid="d3a0b991-22ff-4b44-9c8d-0000trackbbb2"
+      itemGuid="track-bbb2-0002"
+      medium="music"
+      title="Chrome Horizon  -  Sable Vox"/>
+    <podcast:remoteItem
+      feedGuid="e4b1c0a2-33aa-4c55-ad9e-0000trackccc3"
+      itemGuid="track-ccc3-0003"
+      medium="music"
+      title="After Hours Transit  -  Miko Lane"/>
+
+    <!--
+      ITEMS.
+      For a musicL List feed the remoteItems above define the station. We ALSO
+      emit one <item> per segment carrying the value routing, so that a player
+      resolving the timeline can attribute payment per track via valueTimeSplit.
+      Each item's enclosure points at the resolved remote track (Aether resolves
+      the remote feed server-side to get the real audio URL + duration).
+
+      valueTimeSplit + nested remoteItem = REMOTE VALUE ROUTING:
+        - remotePercentage of the payment goes to the ORIGINAL track feed's own
+          value block (its creators get paid; we never mutate their feed).
+        - the residual (100 - remotePercentage) stays with the parent feed's
+          recipients (the station owner)  ->  the additional CURATION CUT.
+        - startTime=0 / duration=<track length> covers the whole segment.
+    -->
+
+    <!-- ===== ITEM 1 (timeline 0s) ===== -->
+    <item>
+      <title>Neon Rain  -  Kova Reyes</title>
+      <guid isPermaLink="false">aether-seg-0001</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/track-aaa1-0001.mp3"
+                 length="7412000" type="audio/mpeg"/>
+      <itunes:duration>221</itunes:duration>
+
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <!-- Segment window covers the full 221s track. remotePercentage=90:
+             90% to Kova Reyes' own feed, 10% residual to the station owner. -->
+        <podcast:valueTimeSplit startTime="0" duration="221" remoteStartTime="0" remotePercentage="90">
+          <podcast:remoteItem
+            feedGuid="c2f9a880-11ee-4a33-8b7c-0000trackaaa1"
+            itemGuid="track-aaa1-0001"
+            medium="music"/>
+        </podcast:valueTimeSplit>
+        <!-- Residual recipient (curation cut). This is the ADDITIONAL recipient:
+             the station owner, never a mutation of the original artist feed. -->
+        <podcast:valueRecipient
+          name="nightdrive (AETHER curation cut)"
+          type="node"
+          address="03a1b2c3d4e5f60718293a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f70819"
+          split="100"/>
+      </podcast:value>
+    </item>
+
+    <!-- ===== ITEM 2 (timeline 221s) ===== -->
+    <item>
+      <title>Chrome Horizon  -  Sable Vox</title>
+      <guid isPermaLink="false">aether-seg-0002</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/track-bbb2-0002.mp3"
+                 length="6980000" type="audio/mpeg"/>
+      <itunes:duration>207</itunes:duration>
+
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <podcast:valueTimeSplit startTime="0" duration="207" remoteStartTime="0" remotePercentage="90">
+          <podcast:remoteItem
+            feedGuid="d3a0b991-22ff-4b44-9c8d-0000trackbbb2"
+            itemGuid="track-bbb2-0002"
+            medium="music"/>
+        </podcast:valueTimeSplit>
+        <podcast:valueRecipient
+          name="nightdrive (AETHER curation cut)"
+          type="node"
+          address="03a1b2c3d4e5f60718293a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f70819"
+          split="100"/>
+      </podcast:value>
+    </item>
+
+    <!-- ===== ITEM 3 (timeline 428s) ===== -->
+    <item>
+      <title>After Hours Transit  -  Miko Lane</title>
+      <guid isPermaLink="false">aether-seg-0003</guid>
+      <enclosure url="https://cdn.aether.example.net/resolved/track-ccc3-0003.mp3"
+                 length="8150000" type="audio/mpeg"/>
+      <itunes:duration>243</itunes:duration>
+
+      <podcast:value type="lightning" method="keysend" suggested="0.00000005000">
+        <podcast:valueTimeSplit startTime="0" duration="243" remoteStartTime="0" remotePercentage="90">
+          <podcast:remoteItem
+            feedGuid="e4b1c0a2-33aa-4c55-ad9e-0000trackccc3"
+            itemGuid="track-ccc3-0003"
+            medium="music"/>
+        </podcast:valueTimeSplit>
+        <podcast:valueRecipient
+          name="nightdrive (AETHER curation cut)"
+          type="node"
+          address="03a1b2c3d4e5f60718293a4b5c6d7e8f9012a3b4c5d6e7f8091a2b3c4d5e6f70819"
+          split="100"/>
+      </podcast:value>
+    </item>
+
+    <!--
+      Total cycle duration = 221 + 207 + 243 = 671s.
+      Aether client: position(now) = (now - anchorEpoch) mod 671, then map to
+      the item whose cumulative range contains that offset. anchorEpoch/mode/
+      cadence are stored in Aether's backend, NOT in this feed (the gap / moat).
+    -->
+  </channel>
+</rss>
