@@ -11,7 +11,7 @@ import { scanFeed } from '../modules/feed-scanner';
 import { buildEpisodeEmbed } from '../embeds/embeds';
 import { telemetry } from '../modules/telemetry';
 
-const POLL_INTERVAL_MS = parseInt(process.env.EPISODE_POLL_INTERVAL_MS ?? '600000', 10); // 10 min default
+const POLL_INTERVAL_MS = parseInt(process.env.EPISODE_POLL_INTERVAL_MS ?? '1800000', 10); // 30 min default
 
 // Track consecutive failures per feed — for admin DM after 3 failures
 const failureCount = new Map<string, number>();
@@ -154,6 +154,9 @@ async function announceToSubscribers(
     if (isEpisodeAnnounced(sub.channel_id, feedUrl, ep.guid)) {
       continue;
     }
+
+    // Add delay between announcements to avoid Discord rate limits
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
       const channel = await client.channels.fetch(sub.channel_id) as TextChannel | null;
