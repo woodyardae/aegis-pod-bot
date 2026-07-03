@@ -42,6 +42,23 @@ This document defines the canonical Greek-based naming schema for the Aegis Aeth
 * **Greek Origin:** *Asphaleia* — security, safety, and prevention of slips (literally "not falling").
 * **System Role:** Telemetry logging, error taxonomy mapping, and the `/health` diagnostic endpoints (`src/modules/telemetry.ts`).
 
+### 💬 CHOROS (KHO-ros) — Synchronized Chat
+* **Greek Origin:** *Choros* — the sacred space of dance and chorus; an ordered communal performance within a defined area.
+* **Family:** Polis/People
+* **System Role:** Manages synchronized chat channels within the Agora Listening Room (`src/modules/choros-chat.ts`). **Partially implemented** — Discord gateway / Nostr relay binding is a TODO.
+
+### 📨 ANGELOS (AHN-geh-los) — Nostr Relay Publisher
+* **Greek Origin:** *Ἄγγελος (Angelos)* — the herald; the one who carries messages between realms.
+* **Family:** Infrastructure
+* **System Role:** Publishes CHOROS chat messages to Nostr relays for decentralized distribution (`src/modules/nostr-client.ts`).
+
+### 🏛️ THALAMOS (THAH-lah-mos) — Database Layer
+* **Greek Origin:** *Θάλαμος (Thalamos)* — the innermost chamber; the protected heart of the structure.
+* **Family:** Infrastructure primitive
+* **System Role:** Shared SQLite persistence layer used by PNEUMA, POLIS, HORAI, and others (`src/db/database.ts`).
+
+> **Embed Renderer** (`src/embeds/embeds.ts`, `src/embeds/themes.ts`) is absorbed under **AKROASIS** as a sub-component. No separate Greek name is assigned.
+
 ---
 
 ## 2. Structural Schema
