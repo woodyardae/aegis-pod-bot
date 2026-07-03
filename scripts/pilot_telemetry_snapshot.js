@@ -84,17 +84,17 @@ async function run() {
     reports.push({
       id: 'pilot-creator-02',
       source: 'MOCK',
-      status: 'DEGRADED',
+      status: 'HEALTHY',
       data: {
-        status: 'DEGRADED',
+        status: 'HEALTHY',
         uptimeSeconds: 86400, // 24h
         modules: {
-          'episode-poller': { status: 'DEGRADED', lastError: 'Rate limit hit' },
+          'episode-poller': { status: 'UP', lastError: null },
           'boost-poller': { status: 'UP', lastError: null },
           'podping-consumer': { status: 'UP', lastError: null }
         },
         errorMetrics: [
-          { code: 'ERR_DISCORD_API', count: 4, lastMessage: 'Rate limit hit' }
+          { code: 'ERR_DISCORD_API', count: 0 }
         ]
       }
     });
